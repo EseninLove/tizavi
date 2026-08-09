@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --tg-bg: #ffffff;
+    --tg-text: #000000;
+    --tg-hint: #8e8e93;
+    --tg-link: #2481cc;
+    --tg-button: #2481cc;
+    --tg-button-text: #ffffff;
+    --tg-secondary-bg: #f2f2f7;
+    --tg-section-bg: #ffffff;
+    --tg-separator: #e5e5ea;
+  }
+
+  html,
+  body {
+    overscroll-behavior-y: contain;
+  }
+
+  body {
+    @apply bg-tg-secondary-bg text-tg-text;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .app-container {
+    @apply mx-auto w-full max-w-md min-h-screen flex flex-col;
+  }
+
+  .scroll-area {
+    @apply flex-1 overflow-y-auto pb-28;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);
+  }
+
+  .section-card {
+    @apply bg-tg-section-bg rounded-2xl overflow-hidden;
+  }
+
+  .product-grid {
+    @apply grid grid-cols-2 gap-3;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl px-5 py-3
+      transition-all active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100;
+  }
+
+  .btn-primary {
+  @apply btn bg-tg-button text-tg-button-text;
+}
+
+  .btn-secondary {
+    @apply btn bg-tg-secondary-bg text-tg-text;
+  }
+
+  .input {
+    @apply w-full bg-tg-secondary-bg text-tg-text rounded-xl px-4 py-3 outline-none
+      placeholder:text-tg-hint transition-all focus:ring-2 focus:ring-tg-button; /* Убрали /30 */
+  }
+
+  .chip {
+    @apply whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all
+      active:scale-95;
+  }
+
+  .chip-active {
+  @apply bg-tg-button text-tg-button-text;
+}
+
+  .chip-inactive {
+    @apply bg-tg-section-bg text-tg-text;
+  }
+
+  .skeleton {
+    @apply animate-pulse bg-tg-secondary-bg rounded-xl;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.admin-input {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid #d1d5db;
+  outline: none;
+  color: #111827;
+  background: #ffffff;
+  transition: all 0.15s;
+}
+.admin-input:focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px #3b82f6;
+}
