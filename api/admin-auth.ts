@@ -16,14 +16,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Авторизация по ADMIN_KEY (веб-доступ)
   if (adminKey) {
-    if (ADMIN_KEY && adminKey === ADMIN_KEY) {
+    if (ADMIN_KEY && adminKey.trim() === ADMIN_KEY.trim()) {
       return res.status(200).json({
         ok: true,
         method: 'key',
         user: { role: 'super_admin', firstName: 'Admin' },
       });
     }
-    return res.status(401).json({ ok: false, error: 'Неверный ключ администратора' });
+    return res.status(401).json({
+      ok: false,
+      error: `Неверный ключ (введено ${adminKey.trim().length} симв., ожидается ${ADMIN_KEY.length} симв.)`,
+    });
   }
 
   // Авторизация через Telegram initData (Mini App)
