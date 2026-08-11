@@ -20,12 +20,23 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
       if (data.ok) {
         onLogin();
       } else {
-        setError(data.error || 'Ошибка авторизации');
+        setError(data.error || 'Неизвестная ошибка');
       }
-    } catch {
-      setError('Ошибка соединения с сервером');
+    } catch (err) {
+      setError(`Ошибка: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const testApi = async () => {
+    setError('');
+    try {
+      const res = await fetch('/api/ping');
+      const text = await res.text();
+      setError(`Тест API [${res.status}]: ${text}`);
+    } catch (err) {
+      setError(`API недоступен: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -55,7 +66,7 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
           </div>
 
           {error && (
-            <div className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">
+            <div className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2 max-h-32 overflow-y-auto break-all">
               {error}
             </div>
           )}
@@ -66,6 +77,13 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
             className="w-full bg-gray-900 text-white font-semibold py-3 rounded-xl hover:bg-gray-800 active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100"
           >
             {loading ? 'Проверка...' : 'Войти'}
+          </button>
+
+          <button
+            onClick={testApi}
+            className="w-full text-sm text-gray-400 hover:text-gray-600 underline"
+          >
+            Проверить соединение с API
           </button>
         </div>
 

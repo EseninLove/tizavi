@@ -19,8 +19,12 @@ async function apiFetch<T = any>(
   };
 
   const response = await fetch(path, { ...options, headers });
-  const data = await response.json();
-  return data as T;
+  const text = await response.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return { ok: false, error: `Сервер вернул статус ${response.status}` } as T;
+  }
 }
 
 // Авторизация
