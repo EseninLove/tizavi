@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateAdmin, sendJSON, unauthorized } from './_helpers';
+import { sql } from './db';
 import { products as seedProducts } from '../src/data/products';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -11,18 +12,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!authorized) return unauthorized(res);
 
   const { telegramId } = (req.body || {}) as { telegramId?: number };
-
-  let sql: any;
-  try {
-    const pg = await import('@vercel/postgres');
-    sql = pg.sql;
-  } catch {
-    return sendJSON(res, 500, {
-      ok: false,
-      error: 'База данных не подключена',
-      detail: 'Vercel Postgres не найден. Создайте базу: Vercel Dashboard → проект → Storage → Create Database → Postgres, затем передеплойте.',
-    });
-  }
 
   try {
     await sql`

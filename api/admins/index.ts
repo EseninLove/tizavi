@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateAdmin, sendJSON, unauthorized } from '../_helpers';
+import { sql } from '../db';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { authorized } = await authenticateAdmin(req);
@@ -7,7 +8,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'GET') {
     try {
-      const { sql } = await import('@vercel/postgres');
       const result = await sql`
         SELECT id, telegram_id, role, created_at
         FROM admins
@@ -26,7 +26,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-      const { sql } = await import('@vercel/postgres');
       await sql`
         INSERT INTO admins (telegram_id, role)
         VALUES (${telegramId}, ${role || 'admin'})

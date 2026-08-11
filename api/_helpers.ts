@@ -1,4 +1,4 @@
-import { sql } from '@vercel/postgres';
+import { sql } from './db';
 import type { VercelRequest } from '@vercel/node';
 import crypto from 'crypto';
 

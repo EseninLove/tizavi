@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateAdmin, sendJSON, unauthorized } from '../_helpers';
+import { sql } from '../db';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { authorized } = await authenticateAdmin(req);
@@ -17,7 +18,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'DELETE') {
     try {
-      const { sql } = await import('@vercel/postgres');
       await sql`DELETE FROM admins WHERE id = ${adminId}`;
       return sendJSON(res, 200, { ok: true, message: 'Админ удалён' });
     } catch {
