@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sql, authenticateAdmin, sendJSON, unauthorized } from './_helpers';
+import { authenticateAdmin, sendJSON, unauthorized } from './_helpers';
 import { products as seedProducts } from '../src/data/products';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -10,10 +10,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { authorized } = await authenticateAdmin(req);
   if (!authorized) return unauthorized(res);
 
-  const { telegramId } = req.body as { telegramId?: number };
+  const { telegramId } = (req.body || {}) as { telegramId?: number };
+
+  let sql: any;
+  try {
+    const pg = await import('@vercel/postgres');
+    sql = pg.sql;
+  } catch {
+    return sendJSON(res, 500, {
+      ok: false,
+      error: 'База данных не подключена',
+      detail: 'Vercel Postgres не найден. Создайте базу: Vercel Dashboard → проект → Storage → Create Database → Postgres, затем передеплойте.',
+    });
+  }
 
   try {
-    // Создаём таблицы
     await sql`
       CREATE TABLE IF NOT EXISTS admins (
         id SERIAL PRIMARY KEY,
@@ -72,7 +83,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
     `;
 
-    // Добавляем админа, если указан telegramId
     if (telegramId) {
       await sql`
         INSERT INTO admins (telegram_id, role)
@@ -81,7 +91,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
     }
 
-    // Сидируем товары, если таблица пуста
     const countResult = await sql`SELECT COUNT(*) as count FROM products`;
     if (parseInt((countResult.rows[0] as any).count, 10) === 0) {
       for (let i = 0; i < seedProducts.length; i++) {

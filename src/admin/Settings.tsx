@@ -11,7 +11,12 @@ export function Settings() {
     setResult(null);
     try {
       const res = await seedApi.init(telegramId ? Number(telegramId) : undefined);
-      setResult({ ok: res.ok, message: res.ok ? (res.message + (res.adminAdded ? ' (админ добавлен)' : '') + `, ${res.productsSeeded} товаров`) : res.error });
+      setResult({
+        ok: res.ok,
+        message: res.ok
+          ? (res.message + (res.adminAdded ? ' (админ добавлен)' : '') + `, ${res.productsSeeded} товаров`)
+          : `${res.error}${res.detail ? ': ' + res.detail : ''}`,
+      });
     } catch {
       setResult({ ok: false, message: 'Ошибка соединения' });
     } finally {
