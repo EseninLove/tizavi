@@ -91,6 +91,18 @@ export const usersApi = {
   list: () => apiFetch<any>('/api/users'),
 };
 
+// Администраторы
+export const adminsApi = {
+  list: () => apiFetch<any>('/api/admins'),
+  add: (telegramId: number, role?: string) =>
+    apiFetch<any>('/api/admins', {
+      method: 'POST',
+      body: JSON.stringify({ telegramId, role }),
+    }),
+  remove: (id: number) =>
+    apiFetch<any>(`/api/admins/${id}`, { method: 'DELETE' }),
+};
+
 // Сидирование
 export const seedApi = {
   init: (telegramId?: number) =>
