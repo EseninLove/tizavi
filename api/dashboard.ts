@@ -10,7 +10,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const [productsResult, ordersResult, usersResult, revenueResult] = await Promise.all([
+    const [productsResult, ordersResult, usersResult] = await Promise.all([
       sql`SELECT COUNT(*) as count FROM products`,
       sql`SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as revenue FROM orders`,
       sql`SELECT COUNT(*) as count FROM users`,
