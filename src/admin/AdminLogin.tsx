@@ -40,6 +40,17 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
     }
   };
 
+  const testDb = async () => {
+    setError('');
+    try {
+      const res = await fetch('/api/db-test');
+      const text = await res.text();
+      setError(`Тест БД [${res.status}]: ${text}`);
+    } catch (err) {
+      setError(`БД недоступна: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
@@ -84,6 +95,13 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
             className="w-full text-sm text-gray-400 hover:text-gray-600 underline"
           >
             Проверить соединение с API
+          </button>
+
+          <button
+            onClick={testDb}
+            className="w-full text-sm text-gray-400 hover:text-gray-600 underline"
+          >
+            Проверить соединение с БД
           </button>
         </div>
 
