@@ -7,7 +7,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     : 'НЕ ЗАДАН';
 
   try {
-    const { pool } = await import('./db');
+    const { pool } = await import('./db.js');
     const client = await pool.connect();
     const result = await client.query('SELECT NOW() as now, version() as version');
     client.release();

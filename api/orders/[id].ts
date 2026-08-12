@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sql, authenticateAdmin, sendJSON, unauthorized } from '../_helpers';
+import { sql, authenticateAdmin, sendJSON, unauthorized } from '../_helpers.js';
 
 const VALID_STATUSES = ['pending', 'paid', 'shipped', 'delivered', 'cancelled'];
 
