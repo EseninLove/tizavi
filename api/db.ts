@@ -3,13 +3,15 @@ import pg from 'pg';
 const { Pool } = pg;
 
 const connectionString =
+  process.env.DB_URL ||
+  process.env.PG_CONNECTION ||
   process.env.DATABASE_URL ||
   process.env.POSTGRES_URL ||
   process.env.POSTGRES_URL_NON_POOLING ||
   '';
 
 if (!connectionString) {
-  console.warn('[db] DATABASE_URL не задан — БД недоступна');
+  console.warn('[db] DB_URL не задан — БД недоступна');
 }
 
 export const pool = new Pool({
