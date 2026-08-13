@@ -1,11 +1,15 @@
 version: '1.0'
 
-docker:
-  build:
-    context: .
-    dockerfile: Dockerfile
+meta:
+  project_name: tizavi-shop
+  version: '1.0.0'
 
 service:
   ports:
     - port: 3000
       type: http
+
+docker:
+  build:
+    context: .
+    dockerfile: Dockerfile
