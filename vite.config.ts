@@ -11,8 +11,11 @@ export default defineConfig({
   },
   base: './',
   server: {
-    port: 3000,
+    port: 5173,
     host: true,
+    proxy: {
+      '/api': 'http://localhost:3000',
+    },
   },
   build: {
     outDir: 'dist',
