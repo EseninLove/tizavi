@@ -1,15 +1,12 @@
-version: '1.0'
-
 meta:
-  project_name: tizavi-shop
-  version: '1.0.0'
+  environment: node
+  toolchain:
+    name: npm
+    version: 18
 
-service:
-  ports:
-    - port: 3000
-      type: http
+build:
+  additionalCommands: npm run build
 
-docker:
-  build:
-    context: .
-    dockerfile: Dockerfile
+run:
+  command: npm run start
+  containerPort: 3000
