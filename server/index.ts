@@ -481,13 +481,37 @@ app.post('/api/create-invoice', async (req, res) => {
 
 // ─── Статика (SPA) ─────────────────────────────────────────
 const distPath = path.join(__dirname, '..', 'dist');
+import fs from 'fs';
+if (!fs.existsSync(distPath)) {
+  console.error(`[warning] dist folder not found at ${distPath}`);
+}
 app.use(express.static(distPath));
 app.get(/^\/(?!api).*/, (_req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
+  const indexPath = path.join(distPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send('Build not found');
+  }
 });
 
 // ─── Запуск ────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Dist path: ${distPath}`);
+  console.log(`DB_URL set: ${!!connectionString}`);
+});
+
+server.on('error', (err) => {
+  console.error('Server error:', err);
+  process.exit(1);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err);
 });

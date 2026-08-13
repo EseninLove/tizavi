@@ -1,0 +1,11 @@
+version: '1.0'
+
+docker:
+  build:
+    context: .
+    dockerfile: Dockerfile
+
+service:
+  ports:
+    - port: 3000
+      type: http
