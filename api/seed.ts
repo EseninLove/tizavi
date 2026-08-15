@@ -1,0 +1,109 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { authenticateAdmin, sendJSON, unauthorized } from './_helpers.js';
+import { sql } from './db.js';
+import { seedProducts } from './seed-data.js';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return sendJSON(res, 405, { ok: false, error: 'Method not allowed' });
+  }
+
+  const { authorized } = await authenticateAdmin(req);
+  if (!authorized) return unauthorized(res);
+
+  const { telegramId } = (req.body || {}) as { telegramId?: number };
+
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS admins (
+        id SERIAL PRIMARY KEY,
+        telegram_id BIGINT UNIQUE NOT NULL,
+        role TEXT DEFAULT 'admin',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS products (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        price INTEGER NOT NULL,
+        old_price INTEGER,
+        image TEXT DEFAULT '',
+        category TEXT NOT NULL,
+        rating REAL DEFAULT 5.0,
+        reviews_count INTEGER DEFAULT 0,
+        in_stock BOOLEAN DEFAULT TRUE,
+        badge TEXT,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS orders (
+        id SERIAL PRIMARY KEY,
+        order_number TEXT UNIQUE NOT NULL,
+        items JSONB NOT NULL DEFAULT '[]',
+        total INTEGER NOT NULL,
+        delivery JSONB NOT NULL DEFAULT '{}',
+        payment_method TEXT NOT NULL DEFAULT 'stars',
+        status TEXT NOT NULL DEFAULT 'pending',
+        telegram_user_id BIGINT,
+        telegram_username TEXT,
+        customer_name TEXT,
+        customer_phone TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        telegram_id BIGINT UNIQUE NOT NULL,
+        username TEXT,
+        first_name TEXT,
+        last_name TEXT,
+        photo_url TEXT,
+        orders_count INTEGER DEFAULT 0,
+        total_spent INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        last_seen TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+
+    if (telegramId) {
+      await sql`
+        INSERT INTO admins (telegram_id, role)
+        VALUES (${telegramId}, 'super_admin')
+        ON CONFLICT (telegram_id) DO NOTHING
+      `;
+    }
+
+    const countResult = await sql`SELECT COUNT(*) as count FROM products`;
+    let productsSeeded = 0;
+    if (parseInt((countResult.rows[0] as any).count, 10) === 0) {
+      for (let i = 0; i < seedProducts.length; i++) {
+        const p = seedProducts[i];
+        await sql`
+          INSERT INTO products (name, description, price, old_price, image, category, rating, reviews_count, in_stock, badge, sort_order)
+          VALUES (${p.name}, ${p.description}, ${p.price}, ${p.oldPrice ?? null}, ${p.image}, ${p.category}, ${p.rating}, ${p.reviewsCount}, ${p.inStock}, ${p.badge ?? null}, ${i})
+        `;
+      }
+      productsSeeded = seedProducts.length;
+    }
+
+    return sendJSON(res, 200, {
+      ok: true,
+      message: 'База данных инициализирована',
+      productsSeeded,
+      adminAdded: telegramId ? true : false,
+    });
+  } catch (err) {
+    return sendJSON(res, 500, {
+      ok: false,
+      error: 'Ошибка инициализации БД',
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
