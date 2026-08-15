@@ -6,6 +6,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { authorized } = await authenticateAdmin(req);
   if (!authorized) return unauthorized(res);
 
+  // GET /api/admins — список
   if (req.method === 'GET') {
     try {
       const result = await sql`
@@ -19,6 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  // POST /api/admins — добавление
   if (req.method === 'POST') {
     const { telegramId, role } = (req.body || {}) as { telegramId?: number; role?: string };
     if (!telegramId || isNaN(telegramId)) {
@@ -34,6 +36,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJSON(res, 201, { ok: true, message: 'Админ добавлен' });
     } catch {
       return sendJSON(res, 500, { ok: false, error: 'Ошибка добавления админа' });
+    }
+  }
+
+  // DELETE /api/admins?id=X — удаление
+  if (req.method === 'DELETE') {
+    const adminId = parseInt(req.query.id as string, 10);
+    if (isNaN(adminId)) {
+      return sendJSON(res, 400, { ok: false, error: 'Невалидный ID' });
+    }
+
+    try {
+      await sql`DELETE FROM admins WHERE id = ${adminId}`;
+      return sendJSON(res, 200, { ok: true, message: 'Админ удалён' });
+    } catch {
+      return sendJSON(res, 500, { ok: false, error: 'Ошибка удаления админа' });
     }
   }
 

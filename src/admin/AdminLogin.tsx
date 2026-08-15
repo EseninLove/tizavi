@@ -43,11 +43,15 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
   const testDb = async () => {
     setError('');
     try {
-      const res = await fetch('/api/db-test');
-      const text = await res.text();
-      setError(`Тест БД [${res.status}]: ${text}`);
+      const res = await fetch('/api/ping');
+      const data = await res.json();
+      setError(
+        `Тест [${res.status}]: API — ${data.ok ? 'ок' : 'ошибка'}, БД — ${
+          data.hasDbUrl ? 'подключена' : 'НЕ подключена (задайте DB_URL)'
+        }${data.detail ? ', деталь: ' + data.detail : ''}`
+      );
     } catch (err) {
-      setError(`БД недоступна: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`API недоступен: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 

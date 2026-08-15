@@ -72,18 +72,17 @@ export const productsApi = {
   create: (data: Record<string, unknown>) =>
     apiFetch<any>('/api/products', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: number, data: Record<string, unknown>) =>
-    apiFetch<any>(`/api/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    apiFetch<any>(`/api/products?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: number) =>
-    apiFetch<any>(`/api/products/${id}`, { method: 'DELETE' }),
+    apiFetch<any>(`/api/products?id=${id}`, { method: 'DELETE' }),
 };
 
 // Заказы
 export const ordersApi = {
   list: (status?: string) =>
     apiFetch<any>(`/api/orders${status ? `?status=${status}` : ''}`),
-  get: (id: number) => apiFetch<any>(`/api/orders/${id}`),
   updateStatus: (id: number, status: string) =>
-    apiFetch<any>(`/api/orders/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }),
+    apiFetch<any>(`/api/orders?id=${id}`, { method: 'PUT', body: JSON.stringify({ status }) }),
 };
 
 // Пользователи
@@ -100,7 +99,7 @@ export const adminsApi = {
       body: JSON.stringify({ telegramId, role }),
     }),
   remove: (id: number) =>
-    apiFetch<any>(`/api/admins/${id}`, { method: 'DELETE' }),
+    apiFetch<any>(`/api/admins?id=${id}`, { method: 'DELETE' }),
 };
 
 // Сидирование

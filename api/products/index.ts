@@ -2,6 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { sql, authenticateAdmin, sendJSON, unauthorized } from '../_helpers.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const { authorized } = await authenticateAdmin(req);
+  if (!authorized) return unauthorized(res);
+
+  // GET /api/products — список
   if (req.method === 'GET') {
     try {
       const result = await sql`
@@ -16,10 +20,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  // POST /api/products — создание
   if (req.method === 'POST') {
-    const { authorized } = await authenticateAdmin(req);
-    if (!authorized) return unauthorized(res);
-
     const body = (req.body || {}) as Record<string, unknown>;
 
     try {
@@ -47,6 +49,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     } catch {
       return sendJSON(res, 500, { ok: false, error: 'Ошибка создания товара' });
+    }
+  }
+
+  // PUT /api/products?id=X — обновление
+  if (req.method === 'PUT') {
+    const productId = parseInt(req.query.id as string, 10);
+    if (isNaN(productId)) {
+      return sendJSON(res, 400, { ok: false, error: 'Невалидный ID' });
+    }
+
+    const body = (req.body || {}) as Record<string, unknown>;
+
+    try {
+      await sql`
+        UPDATE products SET
+          name = ${(body.name as string) || ''},
+          description = ${(body.description as string) || ''},
+          price = ${Number(body.price) || 0},
+          old_price = ${body.old_price ? Number(body.old_price) : null},
+          image = ${(body.image as string) || ''},
+          category = ${(body.category as string) || 'other'},
+          rating = ${Number(body.rating) || 5.0},
+          reviews_count = ${Number(body.reviews_count) || 0},
+          in_stock = ${body.in_stock !== false},
+          badge = ${(body.badge as string) || null},
+          updated_at = NOW()
+        WHERE id = ${productId}
+      `;
+
+      return sendJSON(res, 200, { ok: true, message: 'Товар обновлён' });
+    } catch {
+      return sendJSON(res, 500, { ok: false, error: 'Ошибка обновления товара' });
+    }
+  }
+
+  // DELETE /api/products?id=X — удаление
+  if (req.method === 'DELETE') {
+    const productId = parseInt(req.query.id as string, 10);
+    if (isNaN(productId)) {
+      return sendJSON(res, 400, { ok: false, error: 'Невалидный ID' });
+    }
+
+    try {
+      await sql`DELETE FROM products WHERE id = ${productId}`;
+      return sendJSON(res, 200, { ok: true, message: 'Товар удалён' });
+    } catch {
+      return sendJSON(res, 500, { ok: false, error: 'Ошибка удаления товара' });
     }
   }
 
