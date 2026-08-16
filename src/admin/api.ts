@@ -77,6 +77,17 @@ export const productsApi = {
     apiFetch<any>(`/api/products?id=${id}`, { method: 'DELETE' }),
 };
 
+// Категории
+export const categoriesApi = {
+  list: () => apiFetch<any>('/api/categories'),
+  create: (data: Record<string, unknown>) =>
+    apiFetch<any>('/api/categories', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: number, data: Record<string, unknown>) =>
+    apiFetch<any>(`/api/categories?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (id: number) =>
+    apiFetch<any>(`/api/categories?id=${id}`, { method: 'DELETE' }),
+};
+
 // Заказы
 export const ordersApi = {
   list: (status?: string) =>

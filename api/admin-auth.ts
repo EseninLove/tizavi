@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let isAdmin = false;
     try {
-      const { sql } = await import('./db.js');
+      const { sql } = await import('./_db.js');
       const result = await sql`SELECT 1 FROM admins WHERE telegram_id = ${userId}`;
       isAdmin = (result.rowCount ?? 0) > 0;
     } catch {

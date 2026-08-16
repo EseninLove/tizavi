@@ -16,7 +16,6 @@ export function Checkout() {
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
   const [comment, setComment] = useState('');
-  const [deliveryType, setDeliveryType] = useState<'courier' | 'pickup'>('courier');
   const [paymentMethod, setPaymentMethod] = useState<'stars' | 'telegram-pay'>('stars');
   const [processing, setProcessing] = useState(false);
 
@@ -24,18 +23,18 @@ export function Checkout() {
     window.scrollTo(0, 0);
   }, []);
 
-  const deliveryCost = deliveryType === 'pickup' ? 0 : cartTotal >= 5000 ? 0 : 290;
+  const deliveryCost = cartTotal >= 5000 ? 0 : 290;
   const finalTotal = cartTotal + deliveryCost;
   const starsAmount = Math.round(finalTotal / 100);
 
-  const isValid = name.trim() && phone.trim() && (deliveryType === 'pickup' || (city.trim() && address.trim()));
+  const isValid = name.trim() && phone.trim() && city.trim() && address.trim();
 
   const handleSubmit = async () => {
     if (!isValid || processing) return;
     setProcessing(true);
     haptic.impact('medium');
 
-    const delivery = { name, phone, city, address, comment, deliveryType };
+    const delivery = { name, phone, city, address, comment, deliveryType: 'courier' as const };
     const itemCount = cart.reduce((s, i) => s + i.quantity, 0);
 
     try {
@@ -107,39 +106,13 @@ export function Checkout() {
       </header>
 
       <main className="scroll-area px-4 space-y-4">
-        <section className="section-card p-4">
-          <h2 className="text-sm font-semibold text-tg-text mb-3">Способ доставки</h2>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => {
-                haptic.select();
-                setDeliveryType('courier');
-              }}
-              className={`p-3 rounded-xl border-2 text-left transition-all ${
-                deliveryType === 'courier'
-                  ? 'border-tg-button bg-tg-button/5'
-                  : 'border-tg-separator'
-              }`}
-            >
-              <div className="text-sm font-medium text-tg-text">🚚 Курьер</div>
-              <div className="text-xs text-tg-hint mt-0.5">
-                {deliveryCost === 0 ? 'Бесплатно' : '290 ₽'}
-              </div>
-            </button>
-            <button
-              onClick={() => {
-                haptic.select();
-                setDeliveryType('pickup');
-              }}
-              className={`p-3 rounded-xl border-2 text-left transition-all ${
-                deliveryType === 'pickup'
-                  ? 'border-tg-button bg-tg-button/5'
-                  : 'border-tg-separator'
-              }`}
-            >
-              <div className="text-sm font-medium text-tg-text">🏬 Самовывоз</div>
-              <div className="text-xs text-tg-hint mt-0.5">Бесплатно</div>
-            </button>
+        <section className="section-card p-4 flex items-center gap-3">
+          <span className="text-2xl">🚚</span>
+          <div>
+            <div className="text-sm font-medium text-tg-text">Доставка курьером</div>
+            <div className="text-xs text-tg-hint mt-0.5">
+              {deliveryCost === 0 ? 'Бесплатно (от 5000 ₽)' : '290 ₽'}
+            </div>
           </div>
         </section>
 
@@ -164,28 +137,24 @@ export function Checkout() {
               onChange={(e) => setPhone(e.target.value)}
             />
           </div>
-          {deliveryType === 'courier' && (
-            <>
-              <div>
-                <label className="block text-xs text-tg-hint mb-1">Город *</label>
-                <input
-                  className="input"
-                  placeholder="Город"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-tg-hint mb-1">Адрес *</label>
-                <input
-                  className="input"
-                  placeholder="Улица, дом, квартира"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                />
-              </div>
-            </>
-          )}
+          <div>
+            <label className="block text-xs text-tg-hint mb-1">Город *</label>
+            <input
+              className="input"
+              placeholder="Город"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-tg-hint mb-1">Адрес *</label>
+            <input
+              className="input"
+              placeholder="Улица, дом, квартира"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+            />
+          </div>
           <div>
             <label className="block text-xs text-tg-hint mb-1">Комментарий к заказу</label>
             <textarea

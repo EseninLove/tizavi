@@ -1,12 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useProducts } from '../context/ProductsContext';
 import { EmptyState } from '../components/EmptyState';
 import { ProductCard } from '../components/ProductCard';
-import { products } from '../data/products';
 
 export function Wishlist() {
   const navigate = useNavigate();
   const { wishlist } = useApp();
+  const { products } = useProducts();
   const wishlistedProducts = products.filter((p) => wishlist.includes(p.id));
 
   return (

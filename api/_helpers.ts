@@ -1,4 +1,4 @@
-import { sql } from './db.js';
+import { sql } from './_db.js';
 import type { VercelRequest } from '@vercel/node';
 import crypto from 'crypto';
 

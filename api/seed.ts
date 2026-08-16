@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateAdmin, sendJSON, unauthorized } from './_helpers.js';
-import { sql } from './db.js';
+import { sql } from './_db.js';
 import { seedProducts } from './_seed-data.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -41,6 +41,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
     `;
     await sql`
+      CREATE TABLE IF NOT EXISTS categories (
+        id SERIAL PRIMARY KEY,
+        slug TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        emoji TEXT DEFAULT '📁',
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+    await sql`
       CREATE TABLE IF NOT EXISTS orders (
         id SERIAL PRIMARY KEY,
         order_number TEXT UNIQUE NOT NULL,
@@ -77,6 +87,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         INSERT INTO admins (telegram_id, role)
         VALUES (${telegramId}, 'super_admin')
         ON CONFLICT (telegram_id) DO NOTHING
+      `;
+    }
+
+    // Сидируем категории по умолчанию
+    const defaultCategories = [
+      { slug: 'electronics', name: 'Электроника', emoji: '📱' },
+      { slug: 'clothing', name: 'Одежда', emoji: '👕' },
+      { slug: 'home', name: 'Для дома', emoji: '🏠' },
+      { slug: 'beauty', name: 'Красота', emoji: '💄' },
+      { slug: 'sports', name: 'Спорт', emoji: '⚽' },
+      { slug: 'books', name: 'Книги', emoji: '📚' },
+    ];
+    for (let i = 0; i < defaultCategories.length; i++) {
+      const c = defaultCategories[i];
+      await sql`
+        INSERT INTO categories (slug, name, emoji, sort_order)
+        VALUES (${c.slug}, ${c.name}, ${c.emoji}, ${i})
+        ON CONFLICT (slug) DO NOTHING
       `;
     }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { productsApi } from './api';
+import { productsApi, categoriesApi } from './api';
 import { formatPrice } from '../utils/format';
 
 interface ProductRow {
@@ -14,6 +14,13 @@ interface ProductRow {
   reviews_count: number;
   in_stock: boolean;
   badge: string | null;
+}
+
+interface CategoryRow {
+  id: number;
+  slug: string;
+  name: string;
+  emoji: string;
 }
 
 const emptyForm = {
@@ -31,6 +38,7 @@ const emptyForm = {
 
 export function ProductsAdmin() {
   const [products, setProducts] = useState<ProductRow[]>([]);
+  const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ProductRow | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -43,6 +51,9 @@ export function ProductsAdmin() {
     productsApi.list().then((res) => {
       if (res.ok) setProducts(res.products);
       setLoading(false);
+    });
+    categoriesApi.list().then((res) => {
+      if (res.ok) setCategories(res.categories || []);
     });
   };
 
@@ -118,6 +129,11 @@ export function ProductsAdmin() {
     if (res.ok) load();
   };
 
+  const catName = (slug: string) => {
+    const c = categories.find((cat) => cat.slug === slug);
+    return c ? `${c.emoji} ${c.name}` : slug;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -167,7 +183,7 @@ export function ProductsAdmin() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{p.category}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{catName(p.category)}</td>
                     <td className="px-4 py-3 text-sm font-semibold text-gray-900">{formatPrice(p.price)}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${p.in_stock ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -249,7 +265,18 @@ export function ProductsAdmin() {
 
               <div className="grid grid-cols-2 gap-3">
                 <FormField label="Категория">
-                  <input className="admin-input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="electronics" />
+                  <select
+                    className="admin-input"
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  >
+                    <option value="">— Выберите —</option>
+                    {categories.map((c) => (
+                      <option key={c.slug} value={c.slug}>
+                        {c.emoji} {c.name}
+                      </option>
+                    ))}
+                  </select>
                 </FormField>
                 <FormField label="Бейдж">
                   <input className="admin-input" value={form.badge} onChange={(e) => setForm({ ...form, badge: e.target.value })} placeholder="-20%" />

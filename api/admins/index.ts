@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateAdmin, sendJSON, unauthorized } from '../_helpers.js';
-import { sql } from '../db.js';
+import { sql } from '../_db.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { authorized } = await authenticateAdmin(req);

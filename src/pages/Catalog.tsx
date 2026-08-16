@@ -1,20 +1,30 @@
 import { useMemo, useState } from 'react';
-import { categories, getProductsByCategory, searchProducts } from '../data/products';
+import { useProducts } from '../context/ProductsContext';
 import { ProductCard } from '../components/ProductCard';
 import { EmptyState } from '../components/EmptyState';
 import { useTelegram } from '../lib/telegram';
 import { SearchIcon } from '../components/Icons';
 
 export function Catalog() {
+  const { products, categories, loading, error, reload } = useProducts();
   const [activeCategory, setActiveCategory] = useState('all');
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const { haptic } = useTelegram();
 
   const filtered = useMemo(() => {
-    if (search.trim()) return searchProducts(search);
-    return getProductsByCategory(activeCategory);
-  }, [activeCategory, search]);
+    let list = products;
+    if (activeCategory !== 'all' && !search.trim()) {
+      list = list.filter((p) => p.category === activeCategory);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (p) => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [products, activeCategory, search]);
 
   return (
     <div className="app-container">
@@ -68,11 +78,29 @@ export function Catalog() {
       </header>
 
       <main className="scroll-area px-4">
-        {filtered.length > 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="section-card overflow-hidden">
+                <div className="skeleton aspect-square rounded-none" />
+                <div className="p-2.5 space-y-2">
+                  <div className="skeleton h-4 w-full" />
+                  <div className="skeleton h-4 w-2/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <EmptyState
+            icon="⚠️"
+            title="Ошибка загрузки"
+            description={error}
+            actionLabel="Повторить"
+            onAction={reload}
+          />
+        ) : filtered.length > 0 ? (
           <>
-            <p className="text-xs text-tg-hint mb-3">
-              Найдено: {filtered.length}
-            </p>
+            <p className="text-xs text-tg-hint mb-3">Найдено: {filtered.length}</p>
             <div className="product-grid">
               {filtered.map((product) => (
                 <ProductCard key={product.id} product={product} />

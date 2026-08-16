@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getProductById, products } from '../data/products';
 import { useApp } from '../context/AppContext';
+import { useProducts } from '../context/ProductsContext';
 import { useTelegram } from '../lib/telegram';
 import { formatPrice, formatNumber } from '../utils/format';
 import { ProductCard } from '../components/ProductCard';
@@ -11,7 +11,8 @@ import { HeartIcon, StarIcon, MinusIcon, PlusIcon, CheckIcon } from '../componen
 export function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const product = id ? getProductById(id) : undefined;
+  const { products, loading } = useProducts();
+  const product = products.find((p) => p.id === id);
   const { addToCart, toggleWishlist, isWishlisted, isInCart } = useApp();
   const { haptic, webApp } = useTelegram();
   const [quantity, setQuantity] = useState(1);
@@ -21,7 +22,7 @@ export function ProductDetail() {
     return products
       .filter((p) => p.category === product.category && p.id !== product.id)
       .slice(0, 4);
-  }, [product]);
+  }, [product, products]);
 
   useEffect(() => {
     if (product) {
@@ -50,6 +51,20 @@ export function ProductDetail() {
   }, [product, quantity, webApp, navigate, addToCart, isInCart]);
 
   if (!product) {
+    if (loading) {
+      return (
+        <div className="app-container">
+          <main className="scroll-area">
+            <div className="skeleton aspect-square rounded-none" />
+            <div className="section-card -mt-5 relative z-10 rounded-t-3xl p-4 space-y-3">
+              <div className="skeleton h-5 w-3/4" />
+              <div className="skeleton h-4 w-1/2" />
+              <div className="skeleton h-8 w-1/3" />
+            </div>
+          </main>
+        </div>
+      );
+    }
     return (
       <div className="app-container">
         <main className="scroll-area">
