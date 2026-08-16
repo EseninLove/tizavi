@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import { useTelegram } from '../lib/telegram';
 import { formatPrice, pluralize } from '../utils/format';
 import { EmptyState } from '../components/EmptyState';
@@ -9,6 +10,7 @@ import { StarBadgeIcon, CheckIcon } from '../components/Icons';
 export function Checkout() {
   const navigate = useNavigate();
   const { cart, cartTotal, placeOrder } = useApp();
+  const { active: subscribed, loading: subLoading } = useSubscription();
   const { haptic, webApp, user } = useTelegram();
 
   const [name, setName] = useState(user?.first_name ?? '');
@@ -48,12 +50,17 @@ export function Checkout() {
           method: paymentMethod,
           rubAmount: finalTotal,
           starsAmount,
+          initData: webApp?.initData,
         }),
       });
 
       const data = await response.json();
 
       if (!data.ok || !data.invoiceLink) {
+        if (data.code === 'SUBSCRIPTION_REQUIRED') {
+          navigate('/subscribe');
+          return;
+        }
         webApp?.showAlert(data.error || 'Не удалось создать счёт для оплаты');
         setProcessing(false);
         return;
@@ -93,6 +100,25 @@ export function Checkout() {
             description="Добавьте товары, чтобы оформить заказ"
             actionLabel="В каталог"
             onAction={() => navigate('/')}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  if (!subLoading && !subscribed) {
+    return (
+      <div className="app-container">
+        <header className="px-4 pt-4 pb-2">
+          <h1 className="text-xl font-bold text-tg-text">Оформление заказа</h1>
+        </header>
+        <main className="scroll-area">
+          <EmptyState
+            icon="⭐"
+            title="Нужна подписка"
+            description="Оформление заказов доступно только с активной подпиской. Просмотр каталога остаётся бесплатным."
+            actionLabel="Оформить подписку"
+            onAction={() => navigate('/subscribe')}
           />
         </main>
       </div>

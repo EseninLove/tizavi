@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useProducts } from '../context/ProductsContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import { ProductCard } from '../components/ProductCard';
 import { EmptyState } from '../components/EmptyState';
+import { SubscriptionBanner } from '../components/SubscriptionBanner';
 import { useTelegram } from '../lib/telegram';
 import { SearchIcon } from '../components/Icons';
 
 export function Catalog() {
   const { products, categories, loading, error, reload } = useProducts();
+  const { active: subscribed, loading: subLoading } = useSubscription();
   const [activeCategory, setActiveCategory] = useState('all');
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -75,6 +78,8 @@ export function Catalog() {
           ))}
         </div>
       </header>
+
+      {!subLoading && !subscribed && <SubscriptionBanner />}
 
       <main className="scroll-area px-4">
         {loading ? (

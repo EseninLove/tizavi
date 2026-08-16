@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AppProvider } from './context/AppContext';
 import { ProductsProvider } from './context/ProductsContext';
+import { SubscriptionProvider } from './context/SubscriptionContext';
 import { TelegramProvider } from './lib/telegram';
 import './index.css';
 
@@ -13,7 +14,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <TelegramProvider>
         <AppProvider>
           <ProductsProvider>
-            <App />
+            <SubscriptionProvider>
+              <App />
+            </SubscriptionProvider>
           </ProductsProvider>
         </AppProvider>
       </TelegramProvider>

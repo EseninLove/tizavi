@@ -82,6 +82,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         last_seen TIMESTAMPTZ DEFAULT NOW()
       )
     `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id SERIAL PRIMARY KEY,
+        telegram_id BIGINT UNIQUE NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        payment_method TEXT DEFAULT 'stars',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
 
     // Миграции под продуктовый формат
     await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS unit TEXT DEFAULT 'шт'`;

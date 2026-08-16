@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import { useTelegram } from '../lib/telegram';
 import { formatPrice, formatDate } from '../utils/format';
 import { EmptyState } from '../components/EmptyState';
@@ -9,6 +10,7 @@ export function Profile() {
   const navigate = useNavigate();
   const { user } = useTelegram();
   const { orders, wishlist, cartCount } = useApp();
+  const { active: subscribed, expiresAt, price, days, loading: subLoading } = useSubscription();
   const [showAllOrders, setShowAllOrders] = useState(false);
 
   const displayName = user
@@ -48,6 +50,60 @@ export function Profile() {
               </span>
             )}
           </div>
+        </section>
+
+        <section
+          className={`section-card p-4 flex items-center gap-3 ${
+            subscribed ? 'border-green-500/30' : ''
+          }`}
+        >
+          {subLoading ? (
+            <>
+              <div className="skeleton w-10 h-10 rounded-full" />
+              <div className="flex-1 space-y-1.5">
+                <div className="skeleton h-4 w-32" />
+                <div className="skeleton h-3 w-40" />
+              </div>
+            </>
+          ) : subscribed ? (
+            <>
+              <span className="w-10 h-10 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center text-xl shrink-0">
+                ✓
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-tg-text">Подписка оформлена</div>
+                {expiresAt && (
+                  <div className="text-xs text-tg-hint mt-0.5">
+                    Действует до {formatDate(new Date(expiresAt).getTime())}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => navigate('/subscribe')}
+                className="px-3 py-2 rounded-xl bg-tg-secondary-bg text-xs font-semibold text-tg-text active:scale-95 transition-transform shrink-0"
+              >
+                Продлить
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="w-10 h-10 rounded-full bg-tg-secondary-bg text-tg-hint flex items-center justify-center text-xl shrink-0">
+                ⭐
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-tg-text">Подписка не оформлена</div>
+                <div className="text-xs text-tg-hint mt-0.5">
+                  {price} ⭐ на {days} дней — без неё заказы недоступны
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/subscribe')}
+                className="px-3 py-2 rounded-xl bg-tg-button text-tg-buttonText text-xs font-semibold active:scale-95 transition-transform shrink-0"
+              >
+                Оформить
+              </button>
+            </>
+          )}
         </section>
 
         <section className="grid grid-cols-3 gap-2">
@@ -135,16 +191,29 @@ export function Profile() {
         </section>
 
         <section className="section-card divide-y divide-tg-separator">
-          <button className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors">
-            <span className="text-sm text-tg-text">⚙️ Настройки</span>
+          <button
+            onClick={() => navigate('/legal/offer')}
+            className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors"
+          >
+            <span className="text-sm text-tg-text">📄 Договор-оферта</span>
+            <span className="text-tg-hint">›</span>
+          </button>
+          <button
+            onClick={() => navigate('/legal/privacy')}
+            className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors"
+          >
+            <span className="text-sm text-tg-text">🔒 Политика конфиденциальности</span>
+            <span className="text-tg-hint">›</span>
+          </button>
+          <button
+            onClick={() => navigate('/legal/terms')}
+            className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors"
+          >
+            <span className="text-sm text-tg-text">📋 Пользовательское соглашение</span>
             <span className="text-tg-hint">›</span>
           </button>
           <button className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors">
             <span className="text-sm text-tg-text">📞 Поддержка</span>
-            <span className="text-tg-hint">›</span>
-          </button>
-          <button className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors">
-            <span className="text-sm text-tg-text">ℹ️ О магазине</span>
             <span className="text-tg-hint">›</span>
           </button>
         </section>
