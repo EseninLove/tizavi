@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sql, validateInitData, sendJSON } from './_helpers.js';
+import { sql, validateInitData, sendJSON, upsertUser } from './_helpers.js';
 import {
   getSubscription,
   SUBSCRIPTION_PRICE_RUB,
@@ -28,6 +28,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!valid || !userId) {
     return sendJSON(res, 401, { ok: false, error: 'Невалидные данные Telegram' });
   }
+
+  await upsertUser(initData, userId);
 
   try {
     if (action === 'activate') {

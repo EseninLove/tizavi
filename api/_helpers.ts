@@ -99,3 +99,47 @@ export function sendJSON(res: any, status: number, data: unknown) {
 export function unauthorized(res: any) {
   return sendJSON(res, 401, { ok: false, error: 'Не авторизован' });
 }
+
+interface InitDataUser {
+  id: number;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  photo_url?: string;
+}
+
+export function parseInitDataUser(initData: string): InitDataUser | null {
+  try {
+    const userParam = new URLSearchParams(initData).get('user');
+    if (!userParam) return null;
+    const user = JSON.parse(userParam) as InitDataUser;
+    return user && user.id ? user : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function upsertUser(initData: string, telegramId: number): Promise<void> {
+  try {
+    const user = parseInitDataUser(initData);
+    await sql`
+      INSERT INTO users (telegram_id, username, first_name, last_name, photo_url, last_seen)
+      VALUES (
+        ${telegramId},
+        ${user?.username ?? null},
+        ${user?.first_name ?? null},
+        ${user?.last_name ?? null},
+        ${user?.photo_url ?? null},
+        NOW()
+      )
+      ON CONFLICT (telegram_id) DO UPDATE SET
+        username = COALESCE(EXCLUDED.username, users.username),
+        first_name = COALESCE(EXCLUDED.first_name, users.first_name),
+        last_name = COALESCE(EXCLUDED.last_name, users.last_name),
+        photo_url = COALESCE(EXCLUDED.photo_url, users.photo_url),
+        last_seen = NOW()
+    `;
+  } catch {
+    // таблицы может не быть до инициализации — не валидируем запрос
+  }
+}
