@@ -102,8 +102,7 @@ export function OrdersAdmin() {
                       {(order.customer_name || order.delivery?.name) || 'Гость'}
                     </div>
                     <div className="text-xs text-gray-400">
-                      {order.items?.length || 0} тов. ·{' '}
-                      {order.payment_method === 'stars' ? '⭐ Stars' : '💳 Карта'}
+                      {order.items?.length || 0} тов. · 💳 Карта
                     </div>
                   </div>
                   <div className="text-lg font-bold text-gray-900 shrink-0">

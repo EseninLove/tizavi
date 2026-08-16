@@ -71,9 +71,9 @@ export function Checkout() {
         return;
       }
 
-      webApp.openInvoice(data.invoiceLink, (status: string) => {
+      webApp.openInvoice(data.invoiceLink, async (status: string) => {
         if (status === 'paid') {
-          const order = placeOrder(delivery, PAYMENT_METHOD);
+          const order = await placeOrder(delivery, PAYMENT_METHOD);
           navigate(`/order-success/${order.id}`, { replace: true });
         } else {
           haptic.notify('error');

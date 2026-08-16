@@ -32,9 +32,9 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
   const testApi = async () => {
     setError('');
     try {
-      const res = await fetch('/api/ping');
+      const res = await fetch('/api/categories');
       const text = await res.text();
-      setError(`Тест API [${res.status}]: ${text}`);
+      setError(`Тест API [${res.status}]: ${text.slice(0, 200)}`);
     } catch (err) {
       setError(`API недоступен: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -43,12 +43,12 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
   const testDb = async () => {
     setError('');
     try {
-      const res = await fetch('/api/ping');
+      const res = await fetch('/api/categories');
       const data = await res.json();
       setError(
-        `Тест [${res.status}]: API — ${data.ok ? 'ок' : 'ошибка'}, БД — ${
-          data.hasDbUrl ? 'подключена' : 'НЕ подключена (задайте DB_URL)'
-        }${data.detail ? ', деталь: ' + data.detail : ''}`
+        `Тест [${res.status}]: API — ${data.ok ? 'ок' : 'ошибка'}, категорий — ${
+          Array.isArray(data.categories) ? data.categories.length : 'нет данных'
+        } (0 может означать, что БД не инициализирована)`
       );
     } catch (err) {
       setError(`API недоступен: ${err instanceof Error ? err.message : String(err)}`);

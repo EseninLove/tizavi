@@ -27,7 +27,7 @@ interface AppContextValue {
   isInCart: (productId: string) => boolean;
   toggleWishlist: (productId: string) => void;
   isWishlisted: (productId: string) => boolean;
-  placeOrder: (delivery: OrderDelivery, paymentMethod: PaymentMethod) => Order;
+  placeOrder: (delivery: OrderDelivery, paymentMethod: PaymentMethod) => Promise<Order>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -42,7 +42,7 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const { haptic } = useTelegram();
+  const { haptic, webApp } = useTelegram();
   const [cart, setCart] = useState<CartItem[]>(() => loadFromStorage(CART_KEY, []));
   const [wishlist, setWishlist] = useState<string[]>(() => loadFromStorage(WISHLIST_KEY, []));
   const [orders, setOrders] = useState<Order[]>(() => loadFromStorage(ORDERS_KEY, []));
@@ -58,6 +58,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
   }, [orders]);
+
+  useEffect(() => {
+    const initData = webApp?.initData;
+    if (!initData) return;
+    fetch('/api/my-orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok && Array.isArray(data.orders)) {
+          setOrders(data.orders);
+        }
+      })
+      .catch(() => {});
+  }, [webApp]);
 
   const addToCart = (product: Product, quantity = 1) => {
     setCart((prev) => {
@@ -114,7 +131,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [cart]
   );
 
-  const placeOrder = (delivery: OrderDelivery, paymentMethod: PaymentMethod): Order => {
+  const placeOrder = async (delivery: OrderDelivery, paymentMethod: PaymentMethod): Promise<Order> => {
     const order: Order = {
       id: generateOrderId(),
       items: [...cart],
@@ -124,6 +141,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createdAt: Date.now(),
       status: 'paid',
     };
+
+    const initData = webApp?.initData;
+    if (initData) {
+      try {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            initData,
+            order: {
+              orderNumber: order.id,
+              items: order.items.map((i) => ({
+                product: {
+                  id: i.product.id,
+                  name: i.product.name,
+                  image: i.product.image,
+                  price: i.product.price,
+                  unit: i.product.unit,
+                  weight: i.product.weight,
+                },
+                quantity: i.quantity,
+              })),
+              total: order.total,
+              delivery,
+              paymentMethod,
+            },
+          }),
+        });
+        const data = await res.json();
+        if (data.ok && data.orderNumber) {
+          order.id = data.orderNumber;
+        }
+      } catch {
+        // заказ остаётся локальным при ошибке сети
+      }
+    }
+
     setOrders((prev) => [order, ...prev]);
     clearCart();
     haptic.notify('success');
