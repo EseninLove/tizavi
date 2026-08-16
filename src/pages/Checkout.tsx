@@ -5,7 +5,9 @@ import { useSubscription } from '../context/SubscriptionContext';
 import { useTelegram } from '../lib/telegram';
 import { formatPrice, pluralize } from '../utils/format';
 import { EmptyState } from '../components/EmptyState';
-import { StarBadgeIcon, CheckIcon } from '../components/Icons';
+import { CheckIcon } from '../components/Icons';
+
+const PAYMENT_METHOD = 'telegram-pay' as const;
 
 export function Checkout() {
   const navigate = useNavigate();
@@ -18,7 +20,6 @@ export function Checkout() {
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
   const [comment, setComment] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'stars' | 'telegram-pay'>('stars');
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
@@ -27,7 +28,6 @@ export function Checkout() {
 
   const deliveryCost = cartTotal >= 5000 ? 0 : 290;
   const finalTotal = cartTotal + deliveryCost;
-  const starsAmount = Math.round(finalTotal / 100);
 
   const isValid = name.trim() && phone.trim() && city.trim() && address.trim();
 
@@ -37,7 +37,7 @@ export function Checkout() {
     haptic.impact('medium');
 
     const delivery = { name, phone, city, address, comment, deliveryType: 'courier' as const };
-    const itemCount = cart.reduce((s, i) => s + i.quantity, 0);
+    const itemCount = Math.ceil(cart.reduce((s, i) => s + i.quantity, 0));
 
     try {
       const response = await fetch('/api/create-invoice', {
@@ -46,10 +46,9 @@ export function Checkout() {
         body: JSON.stringify({
           title: `Заказ Tizavi Shop (${itemCount} ${pluralize(itemCount, ['товар', 'товара', 'товаров'])})`,
           description: cart.map((i) => `${i.product.name} ×${i.quantity}`).join('\n').slice(0, 255),
-          payload: JSON.stringify({ ts: Date.now(), method: paymentMethod }),
-          method: paymentMethod,
+          payload: JSON.stringify({ ts: Date.now(), method: PAYMENT_METHOD }),
+          method: PAYMENT_METHOD,
           rubAmount: finalTotal,
-          starsAmount,
           initData: webApp?.initData,
         }),
       });
@@ -74,7 +73,7 @@ export function Checkout() {
 
       webApp.openInvoice(data.invoiceLink, (status: string) => {
         if (status === 'paid') {
-          const order = placeOrder(delivery, paymentMethod);
+          const order = placeOrder(delivery, PAYMENT_METHOD);
           navigate(`/order-success/${order.id}`, { replace: true });
         } else {
           haptic.notify('error');
@@ -193,46 +192,13 @@ export function Checkout() {
           </div>
         </section>
 
-        <section className="section-card p-4">
-          <h2 className="text-sm font-semibold text-tg-text mb-3">Способ оплаты</h2>
-          <div className="space-y-2">
-            <button
-              onClick={() => {
-                haptic.select();
-                setPaymentMethod('stars');
-              }}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
-                paymentMethod === 'stars'
-                  ? 'border-tg-button bg-tg-button/5'
-                  : 'border-tg-separator'
-              }`}
-            >
-              <span className="text-2xl">⭐</span>
-              <div className="flex-1">
-                <div className="text-sm font-medium text-tg-text">Telegram Stars</div>
-                <div className="text-xs text-tg-hint">{starsAmount} звёзд</div>
-              </div>
-              {paymentMethod === 'stars' && <CheckIcon className="w-5 h-5 text-tg-button" />}
-            </button>
-            <button
-              onClick={() => {
-                haptic.select();
-                setPaymentMethod('telegram-pay');
-              }}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
-                paymentMethod === 'telegram-pay'
-                  ? 'border-tg-button bg-tg-button/5'
-                  : 'border-tg-separator'
-              }`}
-            >
-              <span className="text-2xl">💳</span>
-              <div className="flex-1">
-                <div className="text-sm font-medium text-tg-text">Банковская карта</div>
-                <div className="text-xs text-tg-hint">Visa, Mastercard, МИР</div>
-              </div>
-              {paymentMethod === 'telegram-pay' && <CheckIcon className="w-5 h-5 text-tg-button" />}
-            </button>
+        <section className="section-card p-4 flex items-center gap-3">
+          <span className="text-2xl">💳</span>
+          <div className="flex-1">
+            <div className="text-sm font-medium text-tg-text">Банковская карта</div>
+            <div className="text-xs text-tg-hint mt-0.5">Visa, Mastercard, МИР</div>
           </div>
+          <CheckIcon className="w-5 h-5 text-tg-button shrink-0" />
         </section>
 
         <section className="section-card p-4 space-y-2">
@@ -249,16 +215,7 @@ export function Checkout() {
           </div>
           <div className="border-t border-tg-separator pt-2 flex justify-between items-center">
             <span className="text-tg-text font-semibold">К оплате</span>
-            <div className="text-right">
-              <span className="text-tg-text font-bold text-lg block leading-none">
-                {formatPrice(finalTotal)}
-              </span>
-              {paymentMethod === 'stars' && (
-                <span className="text-xs text-tg-hint flex items-center gap-1 justify-end mt-0.5">
-                  <StarBadgeIcon className="w-3 h-3" /> {starsAmount} звёзд
-                </span>
-              )}
-            </div>
+            <span className="text-tg-text font-bold text-lg">{formatPrice(finalTotal)}</span>
           </div>
         </section>
         <div className="h-2" />

@@ -9,9 +9,7 @@ interface CreateInvoiceBody {
   title: string;
   description: string;
   payload: string;
-  method: 'stars' | 'telegram-pay';
   rubAmount: number;
-  starsAmount: number;
   initData?: string;
 }
 
@@ -24,7 +22,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ ok: false, error: 'BOT_TOKEN не задан' });
   }
 
-  const { title, description, payload, method, rubAmount, starsAmount, initData } =
+  if (!PROVIDER_TOKEN) {
+    return res.status(500).json({
+      ok: false,
+      error: 'PROVIDER_TOKEN не задан — оплата картой недоступна',
+    });
+  }
+
+  const { title, description, payload, rubAmount, initData } =
     (req.body || {}) as CreateInvoiceBody;
 
   const { valid, userId } = initData
@@ -44,17 +49,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  const isStars = method === 'stars';
-  const currency = isStars ? 'XTR' : 'RUB';
-  const providerToken = isStars ? '' : PROVIDER_TOKEN;
-  const amount = isStars ? starsAmount : Math.round(rubAmount * 100);
-
-  if (!isStars && !providerToken) {
-    return res.status(500).json({
-      ok: false,
-      error: 'PROVIDER_TOKEN не задан — оплата картой недоступна',
-    });
-  }
+  const currency = 'RUB';
+  const providerToken = PROVIDER_TOKEN;
+  const amount = Math.round(rubAmount * 100);
 
   try {
     const tgResponse = await fetch(

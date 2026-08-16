@@ -2,11 +2,12 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { sql, validateInitData, sendJSON } from './_helpers.js';
 import {
   getSubscription,
-  SUBSCRIPTION_STARS,
+  SUBSCRIPTION_PRICE_RUB,
   SUBSCRIPTION_DAYS,
 } from './_subscription.js';
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
+const PROVIDER_TOKEN = process.env.PROVIDER_TOKEN || '';
 const DAY_MS = 86400000;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -36,10 +37,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       await sql`
         INSERT INTO subscriptions (telegram_id, expires_at, payment_method)
-        VALUES (${userId}, ${newExpiry.toISOString()}, 'stars')
+        VALUES (${userId}, ${newExpiry.toISOString()}, 'card')
         ON CONFLICT (telegram_id) DO UPDATE SET
           expires_at = ${newExpiry.toISOString()},
-          payment_method = 'stars',
+          payment_method = 'card',
           updated_at = NOW()
       `;
 
@@ -47,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ok: true,
         active: true,
         expiresAt: newExpiry.toISOString(),
-        price: SUBSCRIPTION_STARS,
+        priceRub: SUBSCRIPTION_PRICE_RUB,
         days: SUBSCRIPTION_DAYS,
       });
     }
@@ -55,6 +56,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (action === 'invoice') {
       if (!BOT_TOKEN) {
         return sendJSON(res, 500, { ok: false, error: 'BOT_TOKEN не задан' });
+      }
+      if (!PROVIDER_TOKEN) {
+        return sendJSON(res, 500, {
+          ok: false,
+          error: 'PROVIDER_TOKEN не задан — оплата картой недоступна',
+        });
       }
 
       const tgResponse = await fetch(
@@ -66,8 +73,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             title: 'Подписка Tizavi Shop',
             description: `Доступ к оформлению заказов на ${SUBSCRIPTION_DAYS} дней`,
             payload: `sub_${userId}_${Date.now()}`,
-            currency: 'XTR',
-            prices: [{ label: `Подписка на ${SUBSCRIPTION_DAYS} дней`, amount: SUBSCRIPTION_STARS }],
+            provider_token: PROVIDER_TOKEN,
+            currency: 'RUB',
+            prices: [
+              { label: `Подписка на ${SUBSCRIPTION_DAYS} дней`, amount: SUBSCRIPTION_PRICE_RUB * 100 },
+            ],
           }),
         }
       );
@@ -80,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJSON(res, 200, {
         ok: true,
         invoiceLink: data.result,
-        price: SUBSCRIPTION_STARS,
+        priceRub: SUBSCRIPTION_PRICE_RUB,
         days: SUBSCRIPTION_DAYS,
       });
     }
@@ -90,7 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ok: true,
       active,
       expiresAt,
-      price: SUBSCRIPTION_STARS,
+      priceRub: SUBSCRIPTION_PRICE_RUB,
       days: SUBSCRIPTION_DAYS,
     });
   } catch (err) {

@@ -1,21 +1,23 @@
 import { useNavigate } from 'react-router-dom';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useTelegram } from '../lib/telegram';
+import { formatPrice } from '../utils/format';
 
 export function SubscriptionBanner() {
   const navigate = useNavigate();
-  const { price, days } = useSubscription();
+  const { priceRub, days } = useSubscription();
   const { haptic } = useTelegram();
 
   return (
     <div className="mx-4 mt-3 rounded-2xl overflow-hidden">
       <div className="bg-tg-button/10 border border-tg-button/30 p-4">
         <div className="flex items-start gap-3">
-          <span className="text-2xl shrink-0">⭐</span>
+          <span className="text-2xl shrink-0">💳</span>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-tg-text">Нужна подписка</h3>
             <p className="text-xs text-tg-hint mt-0.5 leading-relaxed">
-              Каталог доступен для просмотра. Для оформления заказов оформите подписку — {price} Stars на {days} дней.
+              Каталог доступен для просмотра. Для оформления заказов оформите подписку —{' '}
+              {formatPrice(priceRub)} на {days} дней. Оплата банковской картой.
             </p>
           </div>
         </div>

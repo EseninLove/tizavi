@@ -10,7 +10,7 @@ export function Profile() {
   const navigate = useNavigate();
   const { user } = useTelegram();
   const { orders, wishlist, cartCount } = useApp();
-  const { active: subscribed, expiresAt, price, days, loading: subLoading } = useSubscription();
+  const { active: subscribed, expiresAt, priceRub, days, loading: subLoading } = useSubscription();
   const [showAllOrders, setShowAllOrders] = useState(false);
 
   const displayName = user
@@ -88,12 +88,12 @@ export function Profile() {
           ) : (
             <>
               <span className="w-10 h-10 rounded-full bg-tg-secondary-bg text-tg-hint flex items-center justify-center text-xl shrink-0">
-                ⭐
+                💳
               </span>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-bold text-tg-text">Подписка не оформлена</div>
                 <div className="text-xs text-tg-hint mt-0.5">
-                  {price} ⭐ на {days} дней — без неё заказы недоступны
+                  {formatPrice(priceRub)} на {days} дней — без неё заказы недоступны
                 </div>
               </div>
               <button

@@ -53,9 +53,7 @@ export function OrderSuccess() {
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-tg-hint">Оплата</span>
-            <span className="text-sm text-tg-text">
-              {order.paymentMethod === 'stars' ? '⭐ Telegram Stars' : '💳 Карта'}
-            </span>
+            <span className="text-sm text-tg-text">💳 Банковская карта</span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-tg-hint">Статус</span>

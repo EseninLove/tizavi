@@ -1,6 +1,6 @@
 import { sql } from './_db.js';
 
-export const SUBSCRIPTION_STARS = Number(process.env.SUBSCRIPTION_STARS || 100);
+export const SUBSCRIPTION_PRICE_RUB = Number(process.env.SUBSCRIPTION_PRICE_RUB || 199);
 export const SUBSCRIPTION_DAYS = Number(process.env.SUBSCRIPTION_DAYS || 30);
 
 export async function ensureSubscriptionsTable() {

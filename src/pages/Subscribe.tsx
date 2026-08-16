@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useTelegram } from '../lib/telegram';
-import { formatDate } from '../utils/format';
+import { formatDate, formatPrice } from '../utils/format';
 
 export function Subscribe() {
   const navigate = useNavigate();
-  const { active, expiresAt, price, days, loading, refresh } = useSubscription();
+  const { active, expiresAt, priceRub, days, loading, refresh } = useSubscription();
   const { haptic, webApp } = useTelegram();
   const [buying, setBuying] = useState(false);
   const [error, setError] = useState('');
@@ -97,14 +97,17 @@ export function Subscribe() {
         <div className="section-card p-4 space-y-3">
           <div className="flex items-baseline justify-between">
             <div>
-              <div className="text-2xl font-bold text-tg-text">
-                {price} <span className="text-lg">⭐ Stars</span>
-              </div>
+              <div className="text-2xl font-bold text-tg-text">{formatPrice(priceRub)}</div>
               <div className="text-xs text-tg-hint mt-0.5">на {days} дней доступа</div>
             </div>
             <span className="px-2 py-1 text-xs font-semibold rounded-lg bg-tg-secondary-bg text-tg-hint">
               разовый платёж
             </span>
+          </div>
+
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-tg-secondary-bg">
+            <span className="text-lg shrink-0">💳</span>
+            <span className="text-xs text-tg-hint">Оплата банковской картой: Visa, Mastercard, МИР</span>
           </div>
 
           <div className="space-y-2 pt-2 border-t border-tg-separator">
@@ -163,7 +166,7 @@ export function Subscribe() {
             ? 'Ожидание оплаты...'
             : active
               ? 'Подписка активна'
-              : `Оплатить ${price} ⭐`}
+              : `Оплатить картой · ${formatPrice(priceRub)}`}
         </button>
       </div>
     </div>

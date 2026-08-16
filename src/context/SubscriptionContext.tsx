@@ -12,7 +12,7 @@ import { useTelegram } from '../lib/telegram';
 interface SubscriptionContextValue {
   active: boolean;
   expiresAt: string | null;
-  price: number;
+  priceRub: number;
   days: number;
   loading: boolean;
   checked: boolean;
@@ -25,7 +25,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { webApp } = useTelegram();
   const [active, setActive] = useState(false);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
-  const [price, setPrice] = useState(100);
+  const [priceRub, setPriceRub] = useState(199);
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
   const [checked, setChecked] = useState(false);
@@ -48,7 +48,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       if (data.ok) {
         setActive(!!data.active);
         setExpiresAt(data.expiresAt || null);
-        if (data.price) setPrice(data.price);
+        if (data.priceRub) setPriceRub(data.priceRub);
         if (data.days) setDays(data.days);
       }
     } catch {
@@ -65,8 +65,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo<SubscriptionContextValue>(
-    () => ({ active, expiresAt, price, days, loading, checked, refresh }),
-    [active, expiresAt, price, days, loading, checked, refresh]
+    () => ({ active, expiresAt, priceRub, days, loading, checked, refresh }),
+    [active, expiresAt, priceRub, days, loading, checked, refresh]
   );
 
   return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;
