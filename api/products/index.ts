@@ -7,7 +7,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const result = await sql`
         SELECT id, name, description, price, old_price, image, category,
-               rating, reviews_count, in_stock, badge, sort_order
+               rating, reviews_count, in_stock, badge, unit, weight, sort_order
         FROM products
         ORDER BY sort_order ASC, created_at DESC
       `;
@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
       const result = await sql`
-        INSERT INTO products (name, description, price, old_price, image, category, rating, reviews_count, in_stock, badge)
+        INSERT INTO products (name, description, price, old_price, image, category, rating, reviews_count, in_stock, badge, unit, weight)
         VALUES (
           ${(body.name as string) || ''},
           ${(body.description as string) || ''},
@@ -37,7 +37,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ${Number(body.rating) || 5.0},
           ${Number(body.reviews_count) || 0},
           ${body.in_stock !== false},
-          ${(body.badge as string) || null}
+          ${(body.badge as string) || null},
+          ${(body.unit as string) || 'шт'},
+          ${body.weight ? Number(body.weight) : null}
         )
         RETURNING id
       `;
@@ -74,6 +76,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           reviews_count = ${Number(body.reviews_count) || 0},
           in_stock = ${body.in_stock !== false},
           badge = ${(body.badge as string) || null},
+          unit = ${(body.unit as string) || 'шт'},
+          weight = ${body.weight ? Number(body.weight) : null},
           updated_at = NOW()
         WHERE id = ${productId}
       `;

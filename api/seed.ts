@@ -35,6 +35,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         reviews_count INTEGER DEFAULT 0,
         in_stock BOOLEAN DEFAULT TRUE,
         badge TEXT,
+        unit TEXT DEFAULT 'шт',
+        weight REAL,
         sort_order INTEGER DEFAULT 0,
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -45,7 +47,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         id SERIAL PRIMARY KEY,
         slug TEXT UNIQUE NOT NULL,
         name TEXT NOT NULL,
-        emoji TEXT DEFAULT '📁',
         sort_order INTEGER DEFAULT 0,
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
@@ -82,6 +83,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
     `;
 
+    // Миграции под продуктовый формат
+    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS unit TEXT DEFAULT 'шт'`;
+    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS weight REAL`;
+    await sql`ALTER TABLE categories DROP COLUMN IF EXISTS emoji`;
+
     if (telegramId) {
       await sql`
         INSERT INTO admins (telegram_id, role)
@@ -90,23 +96,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
     }
 
-    // Сидируем категории по умолчанию
+    // Сидируем продуктовые категории по умолчанию
     const defaultCategories = [
-      { slug: 'electronics', name: 'Электроника', emoji: '📱' },
-      { slug: 'clothing', name: 'Одежда', emoji: '👕' },
-      { slug: 'home', name: 'Для дома', emoji: '🏠' },
-      { slug: 'beauty', name: 'Красота', emoji: '💄' },
-      { slug: 'sports', name: 'Спорт', emoji: '⚽' },
-      { slug: 'books', name: 'Книги', emoji: '📚' },
+      { slug: 'fruits-vegetables', name: 'Овощи и фрукты' },
+      { slug: 'dairy', name: 'Молочные продукты и яйца' },
+      { slug: 'meat', name: 'Мясо и птица' },
+      { slug: 'fish', name: 'Рыба и морепродукты' },
+      { slug: 'bakery', name: 'Хлеб и выпечка' },
+      { slug: 'pantry', name: 'Бакалея' },
+      { slug: 'drinks', name: 'Напитки' },
+      { slug: 'frozen', name: 'Заморозка' },
+      { slug: 'sweets', name: 'Сладости и снеки' },
     ];
     for (let i = 0; i < defaultCategories.length; i++) {
       const c = defaultCategories[i];
       await sql`
-        INSERT INTO categories (slug, name, emoji, sort_order)
-        VALUES (${c.slug}, ${c.name}, ${c.emoji}, ${i})
+        INSERT INTO categories (slug, name, sort_order)
+        VALUES (${c.slug}, ${c.name}, ${i})
         ON CONFLICT (slug) DO NOTHING
       `;
     }
+
+    // Удаляем демо-категории старого универсального магазина, если они не используются
+    await sql`
+      DELETE FROM categories
+      WHERE slug IN ('electronics', 'clothing', 'home', 'beauty', 'sports', 'books', 'other')
+        AND NOT EXISTS (SELECT 1 FROM products p WHERE p.category = categories.slug)
+    `;
 
     const countResult = await sql`SELECT COUNT(*) as count FROM products`;
     let productsSeeded = 0;
@@ -114,8 +130,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       for (let i = 0; i < seedProducts.length; i++) {
         const p = seedProducts[i];
         await sql`
-          INSERT INTO products (name, description, price, old_price, image, category, rating, reviews_count, in_stock, badge, sort_order)
-          VALUES (${p.name}, ${p.description}, ${p.price}, ${p.oldPrice ?? null}, ${p.image}, ${p.category}, ${p.rating}, ${p.reviewsCount}, ${p.inStock}, ${p.badge ?? null}, ${i})
+          INSERT INTO products (name, description, price, old_price, image, category, rating, reviews_count, in_stock, badge, unit, weight, sort_order)
+          VALUES (${p.name}, ${p.description}, ${p.price}, ${p.oldPrice ?? null}, ${p.image}, ${p.category}, ${p.rating}, ${p.reviewsCount}, ${p.inStock}, ${p.badge ?? null}, ${p.unit}, ${p.weight ?? null}, ${i})
         `;
       }
       productsSeeded = seedProducts.length;

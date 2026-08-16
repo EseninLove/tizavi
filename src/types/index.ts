@@ -1,3 +1,5 @@
+export type ProductUnit = 'кг' | 'л' | 'шт';
+
 export interface Product {
   id: string;
   name: string;
@@ -11,12 +13,14 @@ export interface Product {
   reviewsCount: number;
   inStock: boolean;
   badge?: string;
+  unit?: ProductUnit;
+  weight?: number;
 }
 
 export interface Category {
   id: string;
   name: string;
-  emoji: string;
+  emoji?: string;
 }
 
 export interface CartItem {

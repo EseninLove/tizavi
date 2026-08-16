@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useProducts } from '../context/ProductsContext';
 import { useTelegram } from '../lib/telegram';
-import { formatPrice, formatNumber } from '../utils/format';
+import { formatPrice, formatNumber, formatQuantity, formatWeight, pricePerKgLabel, quantityLabel, quantityMin, quantityStep } from '../utils/format';
 import { ProductCard } from '../components/ProductCard';
 import { EmptyState } from '../components/EmptyState';
 import { HeartIcon, StarIcon, MinusIcon, PlusIcon, CheckIcon } from '../components/Icons';
@@ -16,6 +16,14 @@ export function ProductDetail() {
   const { addToCart, toggleWishlist, isWishlisted, isInCart } = useApp();
   const { haptic, webApp } = useTelegram();
   const [quantity, setQuantity] = useState(1);
+
+  const unit = product?.unit || 'шт';
+  const step = quantityStep(unit);
+  const minQty = quantityMin(unit);
+  const soldByWeight = unit === 'кг' || unit === 'л';
+  const perUnitLabel = soldByWeight ? `/${unit}` : '';
+  const packInfo = product ? pricePerKgLabel(product.price, product.unit, product.weight) : '';
+  const packWeight = !soldByWeight && product?.weight ? formatWeight(product.weight) : '';
 
   const related = useMemo(() => {
     if (!product) return [];
@@ -112,13 +120,30 @@ export function ProductDetail() {
           <div className="flex items-end gap-2">
             <span className="text-2xl font-bold text-tg-text">
               {formatPrice(product.price)}
+              {perUnitLabel && <span className="text-base font-semibold">{perUnitLabel}</span>}
             </span>
             {product.oldPrice && (
               <span className="text-base text-tg-hint line-through mb-0.5">
                 {formatPrice(product.oldPrice)}
+                {perUnitLabel && <span className="text-xs">/{unit}</span>}
               </span>
             )}
           </div>
+
+          {(packWeight || packInfo) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {packWeight && (
+                <span className="px-2.5 py-1 text-xs font-medium rounded-lg bg-tg-secondary-bg text-tg-text">
+                  Фасовка: {packWeight}
+                </span>
+              )}
+              {packInfo && (
+                <span className="px-2.5 py-1 text-xs font-medium rounded-lg bg-tg-secondary-bg text-tg-hint">
+                  {packInfo}
+                </span>
+              )}
+            </div>
+          )}
 
           <div className="pt-2 border-t border-tg-separator">
             <h2 className="text-sm font-semibold text-tg-text mb-1.5">Описание</h2>
@@ -141,22 +166,24 @@ export function ProductDetail() {
           {product.inStock && (
             <div className="pt-2 border-t border-tg-separator">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-tg-text">Количество</span>
+                <span className="text-sm font-semibold text-tg-text">
+                  {quantityLabel(product.unit)}
+                </span>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => {
                       haptic.impact('light');
-                      setQuantity((q) => Math.max(1, q - 1));
+                      setQuantity((q) => Math.max(minQty, Math.round((q - step) * 100) / 100));
                     }}
                     className="w-9 h-9 flex items-center justify-center rounded-lg bg-tg-secondary-bg text-tg-text active:scale-90 transition-transform"
                   >
                     <MinusIcon className="w-5 h-5" />
                   </button>
-                  <span className="w-6 text-center font-semibold">{quantity}</span>
+                  <span className="w-10 text-center font-semibold">{formatQuantity(quantity)}</span>
                   <button
                     onClick={() => {
                       haptic.impact('light');
-                      setQuantity((q) => q + 1);
+                      setQuantity((q) => Math.round((q + step) * 100) / 100);
                     }}
                     className="w-9 h-9 flex items-center justify-center rounded-lg bg-tg-secondary-bg text-tg-text active:scale-90 transition-transform"
                   >
@@ -179,11 +206,11 @@ export function ProductDetail() {
           <div className="flex items-center gap-2 pt-1">
             <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-tg-secondary-bg">
               <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
-              <span className="text-xs text-tg-hint">Бесплатная доставка от 5000 ₽</span>
+              <span className="text-xs text-tg-hint">Доставка в течение 1 часа</span>
             </div>
             <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-tg-secondary-bg">
               <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
-              <span className="text-xs text-tg-hint">Гарантия возврата 14 дней</span>
+              <span className="text-xs text-tg-hint">Свежие продукты каждый день</span>
             </div>
           </div>
         </div>

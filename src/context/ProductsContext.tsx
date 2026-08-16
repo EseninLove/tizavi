@@ -11,7 +11,7 @@ interface ProductsContextValue {
 
 const ProductsContext = createContext<ProductsContextValue | null>(null);
 
-const DEFAULT_CATEGORIES: Category[] = [{ id: 'all', name: 'Все', emoji: '🛍️' }];
+const DEFAULT_CATEGORIES: Category[] = [{ id: 'all', name: 'Все' }];
 
 interface DbProductRow {
   id: number;
@@ -25,6 +25,8 @@ interface DbProductRow {
   reviews_count: number;
   in_stock: boolean;
   badge: string | null;
+  unit?: string;
+  weight?: number | null;
 }
 
 function mapProduct(row: DbProductRow): Product {
@@ -40,6 +42,8 @@ function mapProduct(row: DbProductRow): Product {
     reviewsCount: Number(row.reviews_count) || 0,
     inStock: row.in_stock !== false,
     badge: row.badge || undefined,
+    unit: (row.unit as Product['unit']) || 'шт',
+    weight: row.weight ? Number(row.weight) : undefined,
   };
 }
 
@@ -74,13 +78,12 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
             const categoriesData = await categoriesRes.json();
             if (categoriesData.ok && Array.isArray(categoriesData.categories)) {
               const mapped: Category[] = categoriesData.categories.map(
-                (c: { slug: string; name: string; emoji: string }) => ({
+                (c: { slug: string; name: string }) => ({
                   id: c.slug,
                   name: c.name,
-                  emoji: c.emoji,
                 })
               );
-              setCategories([{ id: 'all', name: 'Все', emoji: '🛍️' }, ...mapped]);
+              setCategories([{ id: 'all', name: 'Все' }, ...mapped]);
             }
           } catch {
             // категории недоступны — оставим дефолтные

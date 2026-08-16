@@ -70,7 +70,6 @@ export function Catalog() {
               }}
               className={`chip ${activeCategory === cat.id && !search ? 'chip-active' : 'chip-inactive'}`}
             >
-              <span className="mr-1">{cat.emoji}</span>
               {cat.name}
             </button>
           ))}

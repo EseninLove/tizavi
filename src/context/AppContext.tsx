@@ -105,7 +105,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const isWishlisted = (productId: string) => wishlist.includes(productId);
 
   const cartCount = useMemo(
-    () => cart.reduce((sum, i) => sum + i.quantity, 0),
+    () => Math.ceil(cart.reduce((sum, i) => sum + i.quantity, 0)),
     [cart]
   );
 

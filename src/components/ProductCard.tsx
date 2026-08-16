@@ -1,7 +1,7 @@
 import type { Product } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { formatPrice } from '../utils/format';
+import { formatPrice, formatWeight, pricePerKgLabel } from '../utils/format';
 import { HeartIcon, StarIcon } from './Icons';
 
 interface ProductCardProps {
@@ -12,6 +12,9 @@ export function ProductCard({ product }: ProductCardProps) {
   const navigate = useNavigate();
   const { addToCart, toggleWishlist, isWishlisted } = useApp();
   const wishlisted = isWishlisted(product.id);
+  const unit = product.unit || 'шт';
+  const soldByWeight = unit === 'кг' || unit === 'л';
+  const perUnitLabel = soldByWeight ? `/${unit}` : '';
 
   return (
     <div
@@ -59,12 +62,20 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="min-w-0">
             <div className="text-base font-bold text-tg-text truncate">
               {formatPrice(product.price)}
+              {perUnitLabel && <span className="text-xs font-semibold">{perUnitLabel}</span>}
             </div>
             {product.oldPrice && (
               <div className="text-xs text-tg-hint line-through">
                 {formatPrice(product.oldPrice)}
+                {perUnitLabel && <span>/{unit}</span>}
               </div>
             )}
+            {!soldByWeight && product.weight ? (
+              <div className="text-xs text-tg-hint">
+                {formatWeight(product.weight)} ·{' '}
+                {pricePerKgLabel(product.price, product.unit, product.weight)}
+              </div>
+            ) : null}
           </div>
           {product.inStock && (
             <button

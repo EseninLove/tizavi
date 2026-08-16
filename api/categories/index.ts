@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
     try {
       const result = await sql`
-        SELECT id, slug, name, emoji, sort_order
+        SELECT id, slug, name, sort_order
         FROM categories
         ORDER BY sort_order ASC, id ASC
       `;
@@ -38,9 +38,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // POST /api/categories — создание
   if (req.method === 'POST') {
-    const { name, emoji, sort_order } = (req.body || {}) as {
+    const { name, sort_order } = (req.body || {}) as {
       name?: string;
-      emoji?: string;
       sort_order?: number;
     };
 
@@ -52,9 +51,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
       const result = await sql`
-        INSERT INTO categories (slug, name, emoji, sort_order)
-        VALUES (${slug}, ${name.trim()}, ${(emoji || '📁').trim()}, ${Number(sort_order) || 0})
-        RETURNING id, slug, name, emoji
+        INSERT INTO categories (slug, name, sort_order)
+        VALUES (${slug}, ${name.trim()}, ${Number(sort_order) || 0})
+        RETURNING id, slug, name
       `;
       return sendJSON(res, 201, {
         ok: true,
@@ -73,9 +72,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJSON(res, 400, { ok: false, error: 'Невалидный ID' });
     }
 
-    const { name, emoji, sort_order } = (req.body || {}) as {
+    const { name, sort_order } = (req.body || {}) as {
       name?: string;
-      emoji?: string;
       sort_order?: number;
     };
 
@@ -85,9 +83,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           UPDATE categories SET name = ${name.trim()}, slug = ${slugify(name)}
           WHERE id = ${catId}
         `;
-      }
-      if (emoji !== undefined) {
-        await sql`UPDATE categories SET emoji = ${emoji.trim() || '📁'} WHERE id = ${catId}`;
       }
       if (sort_order !== undefined) {
         await sql`UPDATE categories SET sort_order = ${Number(sort_order) || 0} WHERE id = ${catId}`;

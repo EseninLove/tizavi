@@ -5,7 +5,6 @@ interface CategoryRow {
   id: number;
   slug: string;
   name: string;
-  emoji: string;
   sort_order: number;
 }
 
@@ -21,7 +20,6 @@ export function CategoriesAdmin() {
   const [editing, setEditing] = useState<CategoryRow | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
-  const [emoji, setEmoji] = useState('📁');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,14 +39,12 @@ export function CategoriesAdmin() {
 
   const openCreate = () => {
     setName('');
-    setEmoji('📁');
     setEditing(null);
     setShowForm(true);
   };
 
   const openEdit = (c: CategoryRow) => {
     setName(c.name);
-    setEmoji(c.emoji || '📁');
     setEditing(c);
     setShowForm(true);
   };
@@ -61,9 +57,9 @@ export function CategoriesAdmin() {
     try {
       let res;
       if (editing) {
-        res = await categoriesApi.update(editing.id, { name: name.trim(), emoji: emoji.trim() });
+        res = await categoriesApi.update(editing.id, { name: name.trim() });
       } else {
-        res = await categoriesApi.create({ name: name.trim(), emoji: emoji.trim() });
+        res = await categoriesApi.create({ name: name.trim() });
       }
       if (res.ok) {
         setShowForm(false);
@@ -116,9 +112,6 @@ export function CategoriesAdmin() {
           <div className="divide-y divide-gray-100">
             {categories.map((c) => (
               <div key={c.id} className="p-4 flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-gray-100 flex items-center justify-center text-2xl shrink-0">
-                  {c.emoji}
-                </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-gray-900">{c.name}</div>
                   <div className="text-xs text-gray-400">
@@ -166,34 +159,10 @@ export function CategoriesAdmin() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Название *</label>
                 <input
                   className="admin-input"
-                  placeholder="Например: Электроника"
+                  placeholder="Например: Овощи и фрукты"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   autoFocus
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Эмодзи</label>
-                <div className="flex gap-2 flex-wrap">
-                  {['📁', '📱', '👕', '🏠', '💄', '⚽', '📚', '🎁', '🍰', '🐾', '🔧', '🎮'].map((e) => (
-                    <button
-                      key={e}
-                      onClick={() => setEmoji(e)}
-                      className={`w-11 h-11 rounded-xl text-2xl transition-all active:scale-90 ${
-                        emoji === e ? 'bg-gray-900/10 ring-2 ring-gray-900' : 'bg-gray-100'
-                      }`}
-                    >
-                      {e}
-                    </button>
-                  ))}
-                </div>
-                <input
-                  className="admin-input mt-2"
-                  value={emoji}
-                  onChange={(e) => setEmoji(e.target.value)}
-                  placeholder="или введите своё"
-                  maxLength={4}
                 />
               </div>
 

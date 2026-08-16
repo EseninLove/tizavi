@@ -1,14 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useTelegram } from '../lib/telegram';
-import { formatPrice, pluralize } from '../utils/format';
+import { formatPrice, formatQuantity, pluralize, quantityStep } from '../utils/format';
 import { EmptyState } from '../components/EmptyState';
 import { TrashIcon, MinusIcon, PlusIcon } from '../components/Icons';
 import { useEffect } from 'react';
 
 export function Cart() {
   const navigate = useNavigate();
-  const { cart, cartCount, cartTotal, updateQuantity, removeFromCart, clearCart } = useApp();
+  const { cart, cartTotal, updateQuantity, removeFromCart, clearCart } = useApp();
   const { haptic } = useTelegram();
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function Cart() {
         <div>
           <h1 className="text-xl font-bold text-tg-text">Корзина</h1>
           <p className="text-xs text-tg-hint">
-            {cartCount} {pluralize(cartCount, ['товар', 'товара', 'товаров'])}
+            {cart.length} {pluralize(cart.length, ['позиция', 'позиции', 'позиций'])}
           </p>
         </div>
         <button
@@ -57,7 +57,11 @@ export function Cart() {
 
       <main className="scroll-area px-4">
         <div className="space-y-3">
-          {cart.map(({ product, quantity }) => (
+          {cart.map(({ product, quantity }) => {
+            const unit = product.unit || 'шт';
+            const step = quantityStep(unit);
+            const isWeight = unit === 'кг' || unit === 'л';
+            return (
             <div key={product.id} className="section-card flex gap-3 p-3">
               <img
                 src={product.image}
@@ -72,6 +76,9 @@ export function Cart() {
                     onClick={() => navigate(`/product/${product.id}`)}
                   >
                     {product.name}
+                    {isWeight && (
+                      <span className="text-xs text-tg-hint font-normal"> · {formatQuantity(quantity)} {unit}</span>
+                    )}
                   </h3>
                   <button
                     onClick={() => removeFromCart(product.id)}
@@ -84,14 +91,14 @@ export function Cart() {
                 <div className="flex items-end justify-between mt-auto">
                   <div className="flex items-center gap-2.5">
                     <button
-                      onClick={() => updateQuantity(product.id, quantity - 1)}
+                      onClick={() => updateQuantity(product.id, Math.max(step, Math.round((quantity - step) * 100) / 100))}
                       className="w-8 h-8 flex items-center justify-center rounded-lg bg-tg-secondary-bg text-tg-text active:scale-90 transition-transform"
                     >
                       <MinusIcon className="w-4 h-4" />
                     </button>
-                    <span className="w-5 text-center text-sm font-semibold">{quantity}</span>
+                    <span className="w-8 text-center text-sm font-semibold">{formatQuantity(quantity)}</span>
                     <button
-                      onClick={() => updateQuantity(product.id, quantity + 1)}
+                      onClick={() => updateQuantity(product.id, Math.round((quantity + step) * 100) / 100)}
                       className="w-8 h-8 flex items-center justify-center rounded-lg bg-tg-secondary-bg text-tg-text active:scale-90 transition-transform"
                     >
                       <PlusIcon className="w-4 h-4" />
@@ -103,12 +110,13 @@ export function Cart() {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="section-card mt-4 p-4 space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-tg-hint">Товары ({cartCount})</span>
+            <span className="text-tg-hint">Товары ({cart.length})</span>
             <span className="text-tg-text font-medium">{formatPrice(cartTotal)}</span>
           </div>
           <div className="flex justify-between text-sm">

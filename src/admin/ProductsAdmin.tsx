@@ -1,6 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { productsApi, categoriesApi } from './api';
-import { formatPrice } from '../utils/format';
+import { formatPrice, formatWeight } from '../utils/format';
+
+const unitBadge = (p: { unit?: string; weight?: number | null }) => {
+  if (p.unit === 'кг') return 'за 1 кг';
+  if (p.unit === 'л') return 'за 1 л';
+  if (p.weight) return `фасовка ${formatWeight(p.weight)}`;
+  return 'шт';
+};
 
 interface ProductRow {
   id: number;
@@ -14,13 +21,14 @@ interface ProductRow {
   reviews_count: number;
   in_stock: boolean;
   badge: string | null;
+  unit?: string;
+  weight?: number | null;
 }
 
 interface CategoryRow {
   id: number;
   slug: string;
   name: string;
-  emoji: string;
 }
 
 const emptyForm = {
@@ -34,6 +42,8 @@ const emptyForm = {
   reviews_count: '0',
   in_stock: true,
   badge: '',
+  unit: 'шт',
+  weight: '',
 };
 
 export function ProductsAdmin() {
@@ -77,6 +87,8 @@ export function ProductsAdmin() {
       reviews_count: String(p.reviews_count),
       in_stock: p.in_stock,
       badge: p.badge || '',
+      unit: p.unit || 'шт',
+      weight: p.weight ? String(p.weight) : '',
     });
     setEditing(p);
     setShowForm(true);
@@ -101,6 +113,8 @@ export function ProductsAdmin() {
       reviews_count: Number(form.reviews_count) || 0,
       in_stock: form.in_stock,
       badge: form.badge.trim() || null,
+      unit: form.unit,
+      weight: form.unit === 'шт' && form.weight ? Number(form.weight) : null,
     };
 
     try {
@@ -131,8 +145,18 @@ export function ProductsAdmin() {
 
   const catName = (slug: string) => {
     const c = categories.find((cat) => cat.slug === slug);
-    return c ? `${c.emoji} ${c.name}` : slug;
+    return c ? c.name : slug;
   };
+
+  const perKgHint = (() => {
+    const price = Number(form.price);
+    const weight = Number(form.weight);
+    if (!price) return '';
+    if (form.unit === 'кг') return `Цена указана за 1 кг`;
+    if (form.unit === 'л') return `Цена указана за 1 л`;
+    if (weight > 0) return `= ${Math.round(price / weight)} ₽ за 1 кг`;
+    return '';
+  })();
 
   return (
     <div className="space-y-6">
@@ -179,12 +203,18 @@ export function ProductsAdmin() {
                         <img src={p.image} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-gray-100" />
                         <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-900 truncate max-w-xs">{p.name}</div>
+                          <div className="text-xs text-gray-400">{unitBadge(p)}</div>
                           {p.badge && <span className="text-xs text-blue-500">{p.badge}</span>}
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">{catName(p.category)}</td>
-                    <td className="px-4 py-3 text-sm font-semibold text-gray-900">{formatPrice(p.price)}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-gray-900">
+                      {formatPrice(p.price)}
+                      {(p.unit === 'кг' || p.unit === 'л') && (
+                        <span className="text-xs text-gray-400 font-normal">/{p.unit}</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${p.in_stock ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {p.in_stock ? 'В наличии' : 'Нет'}
@@ -213,7 +243,13 @@ export function ProductsAdmin() {
                 <img src={p.image} alt={p.name} className="w-12 h-12 rounded-lg object-cover bg-gray-100 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-gray-900 truncate">{p.name}</div>
-                  <div className="text-sm font-semibold text-gray-700">{formatPrice(p.price)}</div>
+                  <div className="text-xs text-gray-400">{unitBadge(p)}</div>
+                  <div className="text-sm font-semibold text-gray-700">
+                    {formatPrice(p.price)}
+                    {(p.unit === 'кг' || p.unit === 'л') && (
+                      <span className="text-xs text-gray-400 font-normal">/{p.unit}</span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-col gap-1 shrink-0">
                   <button onClick={() => openEdit(p)} className="text-blue-500 text-xs font-medium">Изменить</button>
@@ -259,6 +295,39 @@ export function ProductsAdmin() {
                 </FormField>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Единица продажи *">
+                  <select
+                    className="admin-input"
+                    value={form.unit}
+                    onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                  >
+                    <option value="шт">шт — штучной товар</option>
+                    <option value="кг">кг — на вес</option>
+                    <option value="л">л — на розлив</option>
+                  </select>
+                </FormField>
+                <FormField label={form.unit === 'кг' ? 'Цена за 1 кг' : form.unit === 'л' ? 'Цена за 1 л' : 'Вес фасовки (кг)'}>
+                  {form.unit === 'шт' ? (
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="admin-input"
+                      value={form.weight}
+                      onChange={(e) => setForm({ ...form, weight: e.target.value })}
+                      placeholder="0.5 = 500 г"
+                    />
+                  ) : (
+                    <div className="admin-input bg-gray-50 text-gray-500 select-none">—</div>
+                  )}
+                </FormField>
+              </div>
+
+              {perKgHint && (
+                <div className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">{perKgHint}</div>
+              )}
+
               <FormField label="URL изображения">
                 <input className="admin-input" value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="https://..." />
               </FormField>
@@ -273,7 +342,7 @@ export function ProductsAdmin() {
                     <option value="">— Выберите —</option>
                     {categories.map((c) => (
                       <option key={c.slug} value={c.slug}>
-                        {c.emoji} {c.name}
+                        {c.name}
                       </option>
                     ))}
                   </select>
