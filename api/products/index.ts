@@ -2,10 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { sql, authenticateAdmin, sendJSON, unauthorized } from '../_helpers.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const { authorized } = await authenticateAdmin(req);
-  if (!authorized) return unauthorized(res);
-
-  // GET /api/products — список
+  // GET /api/products — список (публичный)
   if (req.method === 'GET') {
     try {
       const result = await sql`
@@ -19,6 +16,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJSON(res, 500, { ok: false, error: 'Ошибка получения товаров' });
     }
   }
+
+  const { authorized } = await authenticateAdmin(req);
+  if (!authorized) return unauthorized(res);
 
   // POST /api/products — создание
   if (req.method === 'POST') {
