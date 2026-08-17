@@ -212,8 +212,11 @@ export function Profile() {
             <span className="text-sm text-tg-text">📋 Пользовательское соглашение</span>
             <span className="text-tg-hint">›</span>
           </button>
-          <button className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors">
-            <span className="text-sm text-tg-text">📞 Поддержка</span>
+          <button
+            onClick={() => navigate('/support')}
+            className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors"
+          >
+            <span className="text-sm text-tg-text">🎧 Поддержка</span>
             <span className="text-tg-hint">›</span>
           </button>
         </section>

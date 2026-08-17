@@ -8,7 +8,7 @@ function getAuthHeader(): Record<string, string> {
   return { 'x-admin-auth': `${type} ${token}` };
 }
 
-async function apiFetch<T = any>(
+export async function apiFetch<T = any>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {

@@ -92,6 +92,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS support_tickets (
+        id SERIAL PRIMARY KEY,
+        telegram_id BIGINT NOT NULL,
+        username TEXT,
+        user_name TEXT,
+        subject TEXT NOT NULL,
+        message TEXT NOT NULL,
+        reply TEXT,
+        status TEXT NOT NULL DEFAULT 'open',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        replied_at TIMESTAMPTZ,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
 
     // Миграции под продуктовый формат
     await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS unit TEXT DEFAULT 'шт'`;

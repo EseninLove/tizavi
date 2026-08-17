@@ -8,6 +8,7 @@ import { OrdersAdmin } from './OrdersAdmin';
 import { UsersAdmin } from './UsersAdmin';
 import { AdminsAdmin } from './AdminsAdmin';
 import { CategoriesAdmin } from './CategoriesAdmin';
+import { SupportAdmin } from './SupportAdmin';
 import { Settings } from './Settings';
 
 const navItems = [
@@ -16,6 +17,7 @@ const navItems = [
   { path: '/admin/categories', label: 'Категории', icon: '🏷️', end: false },
   { path: '/admin/orders', label: 'Заказы', icon: '🛒', end: false },
   { path: '/admin/users', label: 'Пользователи', icon: '👥', end: false },
+  { path: '/admin/support', label: 'Поддержка', icon: '🎧', end: false },
   { path: '/admin/admins', label: 'Администраторы', icon: '🛡️', end: false },
   { path: '/admin/settings', label: 'Настройки', icon: '⚙️', end: false },
 ];
@@ -117,6 +119,7 @@ export function AdminApp() {
           <Route path="categories" element={<CategoriesAdmin />} />
           <Route path="orders" element={<OrdersAdmin />} />
           <Route path="users" element={<UsersAdmin />} />
+          <Route path="support" element={<SupportAdmin />} />
           <Route path="admins" element={<AdminsAdmin />} />
           <Route path="settings" element={<Settings />} />
         </Routes>

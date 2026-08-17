@@ -9,6 +9,7 @@ import { Wishlist } from './pages/Wishlist';
 import { Profile } from './pages/Profile';
 import { Subscribe } from './pages/Subscribe';
 import { Legal } from './pages/Legal';
+import { Support } from './pages/Support';
 import { BottomNav } from './components/BottomNav';
 import { useBackButton } from './hooks/useBackButton';
 
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/subscribe" element={<Subscribe />} />
         <Route path="/legal/:doc" element={<Legal />} />
+        <Route path="/support" element={<Support />} />
         <Route path="*" element={<Catalog />} />
       </Routes>
       {!hideBottomNav && <BottomNav />}
