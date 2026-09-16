@@ -185,7 +185,7 @@ export function SupportAdmin() {
                   Ответ (будет отправлен пользователю в Telegram)
                 </h3>
                 <textarea
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm resize-none text-gray-900"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all text-sm resize-none text-gray-900"
                   rows={4}
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}

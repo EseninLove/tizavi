@@ -7,8 +7,8 @@
     --tg-bg: #ffffff;
     --tg-text: #000000;
     --tg-hint: #8e8e93;
-    --tg-link: #2481cc;
-    --tg-button: #2481cc;
+    --tg-link: #1da851;
+    --tg-button: #1da851;
     --tg-button-text: #ffffff;
     --tg-secondary-bg: #f2f2f7;
     --tg-section-bg: #ffffff;
@@ -107,5 +107,5 @@
 }
 .admin-input:focus {
   border-color: transparent;
-  box-shadow: 0 0 0 2px #3b82f6;
+  box-shadow: 0 0 0 2px #16a34a;
 }

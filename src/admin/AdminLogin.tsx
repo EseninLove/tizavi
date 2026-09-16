@@ -71,7 +71,7 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
             </label>
             <input
               type="password"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
               placeholder="Введите ключ..."
               value={adminKey}
               onChange={(e) => setAdminKey(e.target.value)}

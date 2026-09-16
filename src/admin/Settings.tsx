@@ -42,7 +42,7 @@ export function Settings() {
           </label>
           <input
             type="number"
-            className="w-full px-4 py-2.5 rounded-xl border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            className="w-full px-4 py-2.5 rounded-xl border border-gray-300 outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
             placeholder="Например: 123456789"
             value={telegramId}
             onChange={(e) => setTelegramId(e.target.value)}

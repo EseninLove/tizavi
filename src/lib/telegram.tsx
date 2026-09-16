@@ -99,6 +99,12 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
       if (params.secondary_bg_color) root.style.setProperty('--tg-secondary-bg', params.secondary_bg_color);
       if (params.section_bg_color) root.style.setProperty('--tg-section-bg', params.section_bg_color);
       if (params.separator_color) root.style.setProperty('--tg-separator', params.separator_color);
+
+      // Брендовый зелёный акцент вместо стандартного синего Telegram
+      const green = tg.colorScheme === 'dark' ? '#2fce63' : '#1da851';
+      root.style.setProperty('--tg-link', green);
+      root.style.setProperty('--tg-button', green);
+
       try {
         tg.setHeaderColor(params.bg_color || params.section_bg_color || '#ffffff');
       } catch {

@@ -8,8 +8,8 @@ export default {
           bg: 'var(--tg-bg, #ffffff)',
           text: 'var(--tg-text, #000000)',
           hint: 'var(--tg-hint, #8e8e93)',
-          link: 'var(--tg-link, #2481cc)',
-          button: 'var(--tg-button, #2481cc)',
+          link: 'var(--tg-link, #1da851)',
+          button: 'var(--tg-button, #1da851)',
 
           // Было buttonText
           'button-text': 'var(--tg-button-text, #ffffff)',
