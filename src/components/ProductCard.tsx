@@ -29,7 +29,7 @@ export function ProductCard({ product }: ProductCardProps) {
           className="w-full h-full object-cover"
         />
         {product.badge && (
-          <span className="absolute top-2 left-2 px-2 py-0.5 text-xs font-bold rounded-md bg-tg-button text-tg-buttonText">
+          <span className="absolute top-2 left-2 px-2 py-0.5 text-xs font-bold rounded-md bg-tg-button text-tg-button-text">
             {product.badge}
           </span>
         )}
@@ -83,7 +83,7 @@ export function ProductCard({ product }: ProductCardProps) {
                 e.stopPropagation();
                 addToCart(product);
               }}
-              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-tg-button text-tg-buttonText text-xl font-bold active:scale-90 transition-transform"
+              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-tg-button text-tg-button-text text-xl font-bold active:scale-90 transition-transform"
               aria-label="В корзину"
             >
               +

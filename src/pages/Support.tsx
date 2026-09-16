@@ -142,7 +142,7 @@ export function Support() {
                   }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all active:scale-95 ${
                     subject === s
-                      ? 'bg-tg-button text-tg-buttonText'
+                      ? 'bg-tg-button text-tg-button-text'
                       : 'bg-tg-secondary-bg text-tg-hint'
                   }`}
                 >

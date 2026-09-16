@@ -35,7 +35,7 @@ export function Profile() {
               className="w-16 h-16 rounded-full object-cover"
             />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-tg-button text-tg-buttonText flex items-center justify-center text-2xl font-bold">
+            <div className="w-16 h-16 rounded-full bg-tg-button text-tg-button-text flex items-center justify-center text-2xl font-bold">
               {initials}
             </div>
           )}
@@ -98,7 +98,7 @@ export function Profile() {
               </div>
               <button
                 onClick={() => navigate('/subscribe')}
-                className="px-3 py-2 rounded-xl bg-tg-button text-tg-buttonText text-xs font-semibold active:scale-95 transition-transform shrink-0"
+                className="px-3 py-2 rounded-xl bg-tg-button text-tg-button-text text-xs font-semibold active:scale-95 transition-transform shrink-0"
               >
                 Оформить
               </button>

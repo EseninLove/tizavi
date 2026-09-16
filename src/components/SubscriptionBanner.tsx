@@ -10,12 +10,12 @@ export function SubscriptionBanner() {
 
   return (
     <div className="mx-4 mt-3 rounded-2xl overflow-hidden">
-      <div className="bg-tg-button/10 border-2 border-tg-button p-4 shadow-[0_0_24px_rgba(47,206,99,0.25)]">
+      <div className="bg-tg-button/10 border-2 border-green-500 p-4 shadow-[0_0_24px_rgba(47,206,99,0.25)]">
         <div className="flex items-start gap-3">
           <span className="text-2xl shrink-0">💳</span>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-tg-text">Нужна подписка</h3>
-            <p className="text-xs text-tg-hint mt-0.5 leading-relaxed">
+            <p className="text-xs text-tg-text/80 mt-0.5 leading-relaxed">
               Каталог доступен для просмотра. Для оформления заказов оформите подписку —{' '}
               {formatPrice(priceRub)} на {days} дней. Оплата банковской картой.
             </p>

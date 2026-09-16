@@ -99,7 +99,7 @@ export function ProductDetail() {
 
         <div className="section-card -mt-5 relative z-10 rounded-t-3xl p-4 space-y-4">
           {product.badge && (
-            <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-md bg-tg-button text-tg-buttonText">
+            <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-md bg-tg-button text-tg-button-text">
               {product.badge}
             </span>
           )}
