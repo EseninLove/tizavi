@@ -9,35 +9,33 @@ export function SubscriptionBanner() {
   const { haptic } = useTelegram();
 
   return (
-    <div className="mx-4 mt-3 rounded-2xl overflow-hidden">
-      <div className="bg-tg-button/10 border-2 border-green-500 p-4 shadow-[0_0_24px_rgba(47,206,99,0.25)]">
-        <div className="flex items-start gap-3">
-          <span className="text-2xl shrink-0">💳</span>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-bold text-tg-text">Нужна подписка</h3>
-            <p className="text-xs text-tg-text/80 mt-0.5 leading-relaxed">
-              Каталог доступен для просмотра. Для оформления заказов оформите подписку —{' '}
-              {formatPrice(priceRub)} на {days} дней. Оплата банковской картой.
-            </p>
-          </div>
+    <div className="mx-4 mt-3 rounded-2xl bg-tg-button/10 border-2 border-green-500 p-4 shadow-[0_0_24px_rgba(47,206,99,0.25)]">
+      <div className="flex items-start gap-3">
+        <span className="text-2xl shrink-0">💳</span>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-bold text-tg-text">Нужна подписка</h3>
+          <p className="text-xs text-tg-text/80 mt-0.5 leading-relaxed">
+            Каталог доступен для просмотра. Для оформления заказов оформите подписку —{' '}
+            {formatPrice(priceRub)} на {days} дней. Оплата банковской картой.
+          </p>
         </div>
-        <div className="flex items-center gap-2 mt-3">
-          <button
-            onClick={() => {
-              haptic.select();
-              navigate('/subscribe');
-            }}
-            className="flex-1 py-2 rounded-xl bg-tg-button text-tg-button-text text-sm font-semibold active:scale-95 transition-transform"
-          >
-            Оформить подписку
-          </button>
-          <button
-            onClick={() => navigate('/legal/offer')}
-            className="px-3 py-2 rounded-xl bg-tg-secondary-bg text-tg-hint text-xs font-medium active:scale-95 transition-transform"
-          >
-            Оферта
-          </button>
-        </div>
+      </div>
+      <div className="flex items-center gap-2 mt-3">
+        <button
+          onClick={() => {
+            haptic.select();
+            navigate('/subscribe');
+          }}
+          className="flex-1 py-2 rounded-xl bg-tg-button text-tg-button-text text-sm font-semibold active:scale-95 transition-transform"
+        >
+          Оформить подписку
+        </button>
+        <button
+          onClick={() => navigate('/legal/offer')}
+          className="px-3 py-2 rounded-xl bg-tg-secondary-bg text-tg-hint text-xs font-medium active:scale-95 transition-transform"
+        >
+          Оферта
+        </button>
       </div>
     </div>
   );
