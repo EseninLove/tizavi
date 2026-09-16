@@ -54,7 +54,7 @@ export function Profile() {
 
         <section
           className={`section-card p-4 flex items-center gap-3 ${
-            subscribed ? 'border-green-500/30' : ''
+            subscribed ? 'border-2 border-green-500' : ''
           }`}
         >
           {subLoading ? (

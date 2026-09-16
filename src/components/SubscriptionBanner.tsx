@@ -10,7 +10,7 @@ export function SubscriptionBanner() {
 
   return (
     <div className="mx-4 mt-3 rounded-2xl overflow-hidden">
-      <div className="bg-tg-button/10 border border-tg-button/30 p-4">
+      <div className="bg-tg-button/10 border-2 border-tg-button p-4 shadow-[0_0_24px_rgba(47,206,99,0.25)]">
         <div className="flex items-start gap-3">
           <span className="text-2xl shrink-0">💳</span>
           <div className="flex-1 min-w-0">
@@ -27,7 +27,7 @@ export function SubscriptionBanner() {
               haptic.select();
               navigate('/subscribe');
             }}
-            className="flex-1 py-2 rounded-xl bg-tg-button text-tg-buttonText text-sm font-semibold active:scale-95 transition-transform"
+            className="flex-1 py-2 rounded-xl bg-tg-button text-tg-button-text text-sm font-semibold active:scale-95 transition-transform"
           >
             Оформить подписку
           </button>

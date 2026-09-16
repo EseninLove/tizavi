@@ -79,7 +79,7 @@ export function Subscribe() {
 
       <main className="scroll-area px-4 space-y-4">
         {(active || justActivated) && (
-          <div className="section-card p-4 flex items-center gap-3 border-green-500/30">
+          <div className="section-card p-4 flex items-center gap-3 border-2 border-green-500">
             <span className="w-10 h-10 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center text-xl shrink-0">
               ✓
             </span>
