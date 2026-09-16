@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --tg-bg: #0b2a13;
+    --tg-bg: #061a0c;
     --tg-text: #ffffff;
     --tg-hint: #93c39d;
     --tg-link: #2fce63;
@@ -13,6 +13,7 @@
     --tg-secondary-bg: #1a6b2e;
     --tg-section-bg: #123a1e;
     --tg-separator: #1f5029;
+    --app-bg: linear-gradient(180deg, #061a0c 0%, #0e3016 45%, #1a6b2e 100%);
   }
 
   html,
@@ -22,7 +23,7 @@
 
   body {
     @apply text-tg-text;
-    background: linear-gradient(180deg, #0b2a13 0%, #123a1e 50%, #1a6b2e 100%);
+    background: var(--app-bg);
     background-attachment: fixed;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
       sans-serif;

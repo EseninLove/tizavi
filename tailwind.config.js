@@ -5,7 +5,7 @@ export default {
     extend: {
       colors: {
         tg: {
-          bg: 'var(--tg-bg, #0b2a13)',
+          bg: 'var(--tg-bg, #061a0c)',
           text: 'var(--tg-text, #ffffff)',
           hint: 'var(--tg-hint, #93c39d)',
           link: 'var(--tg-link, #2fce63)',

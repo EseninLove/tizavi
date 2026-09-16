@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useSubscription } from '../context/SubscriptionContext';
+import { useTheme, type Theme } from '../context/ThemeContext';
 import { useTelegram } from '../lib/telegram';
 import { formatPrice, formatDate } from '../utils/format';
 import { EmptyState } from '../components/EmptyState';
@@ -11,7 +12,13 @@ export function Profile() {
   const { user } = useTelegram();
   const { orders, wishlist, cartCount } = useApp();
   const { active: subscribed, expiresAt, priceRub, days, loading: subLoading } = useSubscription();
+  const { theme, setTheme } = useTheme();
   const [showAllOrders, setShowAllOrders] = useState(false);
+
+  const themeOptions: Array<{ value: Theme; label: string; icon: string }> = [
+    { value: 'dark', label: 'Тёмная', icon: '🌙' },
+    { value: 'light', label: 'Светлая', icon: '☀️' },
+  ];
 
   const displayName = user
     ? `${user.first_name}${user.last_name ? ' ' + user.last_name : ''}`
@@ -188,6 +195,25 @@ export function Profile() {
               onAction={() => navigate('/')}
             />
           )}
+        </section>
+
+        <section className="section-card p-4">
+          <div className="text-sm font-bold text-tg-text mb-3">🎨 Оформление</div>
+          <div className="grid grid-cols-2 gap-2">
+            {themeOptions.map(({ value, label, icon }) => (
+              <button
+                key={value}
+                onClick={() => setTheme(value)}
+                className={`py-2.5 rounded-xl text-sm font-semibold active:scale-95 transition-all ${
+                  theme === value
+                    ? 'bg-tg-button text-tg-button-text'
+                    : 'bg-tg-secondary-bg text-tg-text'
+                }`}
+              >
+                {icon} {label}
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className="section-card divide-y divide-tg-separator">

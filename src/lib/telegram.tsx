@@ -86,52 +86,6 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     tg.ready();
     tg.expand();
     setWebApp(tg);
-
-    // Брендовая тёмно-зелёная палитра (по логотипу) — игнорируем тему Telegram
-    const BRAND = {
-      bg: '#0b2a13',
-      text: '#ffffff',
-      hint: '#93c39d',
-      link: '#2fce63',
-      button: '#ffffff',
-      buttonText: '#0b2a13',
-      secondaryBg: '#1a6b2e',
-      sectionBg: '#123a1e',
-      separator: '#1f5029',
-    };
-
-    const applyTheme = () => {
-      const root = document.documentElement;
-      root.style.setProperty('--tg-bg', BRAND.bg);
-      root.style.setProperty('--tg-text', BRAND.text);
-      root.style.setProperty('--tg-hint', BRAND.hint);
-      root.style.setProperty('--tg-link', BRAND.link);
-      root.style.setProperty('--tg-button', BRAND.button);
-      root.style.setProperty('--tg-button-text', BRAND.buttonText);
-      root.style.setProperty('--tg-secondary-bg', BRAND.secondaryBg);
-      root.style.setProperty('--tg-section-bg', BRAND.sectionBg);
-      root.style.setProperty('--tg-separator', BRAND.separator);
-
-      try {
-        tg.setHeaderColor(BRAND.bg);
-        tg.setBackgroundColor(BRAND.bg);
-      } catch {
-        // ignore
-      }
-
-      try {
-        tg.MainButton.setParams({ color: BRAND.button, text_color: BRAND.buttonText });
-      } catch {
-        // ignore
-      }
-    };
-
-    applyTheme();
-    tg.onEvent('themeChanged', applyTheme);
-
-    return () => {
-      tg.offEvent('themeChanged', applyTheme);
-    };
   }, []);
 
   const value = useMemo<TelegramContextValue>(
