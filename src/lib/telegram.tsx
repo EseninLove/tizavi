@@ -87,26 +87,40 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     tg.expand();
     setWebApp(tg);
 
-    const applyTheme = () => {
-      const params = tg.themeParams;
-      const root = document.documentElement;
-      if (params.bg_color) root.style.setProperty('--tg-bg', params.bg_color);
-      if (params.text_color) root.style.setProperty('--tg-text', params.text_color);
-      if (params.hint_color) root.style.setProperty('--tg-hint', params.hint_color);
-      if (params.link_color) root.style.setProperty('--tg-link', params.link_color);
-      if (params.button_color) root.style.setProperty('--tg-button', params.button_color);
-      if (params.button_text_color) root.style.setProperty('--tg-button-text', params.button_text_color);
-      if (params.secondary_bg_color) root.style.setProperty('--tg-secondary-bg', params.secondary_bg_color);
-      if (params.section_bg_color) root.style.setProperty('--tg-section-bg', params.section_bg_color);
-      if (params.separator_color) root.style.setProperty('--tg-separator', params.separator_color);
+    // Брендовая тёмно-зелёная палитра (по логотипу) — игнорируем тему Telegram
+    const BRAND = {
+      bg: '#0b2a13',
+      text: '#ffffff',
+      hint: '#93c39d',
+      link: '#2fce63',
+      button: '#2fce63',
+      buttonText: '#06230d',
+      secondaryBg: '#1a6b2e',
+      sectionBg: '#123a1e',
+      separator: '#1f5029',
+    };
 
-      // Брендовый зелёный акцент вместо стандартного синего Telegram
-      const green = tg.colorScheme === 'dark' ? '#2fce63' : '#1da851';
-      root.style.setProperty('--tg-link', green);
-      root.style.setProperty('--tg-button', green);
+    const applyTheme = () => {
+      const root = document.documentElement;
+      root.style.setProperty('--tg-bg', BRAND.bg);
+      root.style.setProperty('--tg-text', BRAND.text);
+      root.style.setProperty('--tg-hint', BRAND.hint);
+      root.style.setProperty('--tg-link', BRAND.link);
+      root.style.setProperty('--tg-button', BRAND.button);
+      root.style.setProperty('--tg-button-text', BRAND.buttonText);
+      root.style.setProperty('--tg-secondary-bg', BRAND.secondaryBg);
+      root.style.setProperty('--tg-section-bg', BRAND.sectionBg);
+      root.style.setProperty('--tg-separator', BRAND.separator);
 
       try {
-        tg.setHeaderColor(params.bg_color || params.section_bg_color || '#ffffff');
+        tg.setHeaderColor(BRAND.bg);
+        tg.setBackgroundColor(BRAND.bg);
+      } catch {
+        // ignore
+      }
+
+      try {
+        tg.MainButton.setParams({ color: BRAND.button, text_color: BRAND.buttonText });
       } catch {
         // ignore
       }

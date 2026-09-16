@@ -5,22 +5,22 @@ export default {
     extend: {
       colors: {
         tg: {
-          bg: 'var(--tg-bg, #ffffff)',
-          text: 'var(--tg-text, #000000)',
-          hint: 'var(--tg-hint, #8e8e93)',
-          link: 'var(--tg-link, #1da851)',
-          button: 'var(--tg-button, #1da851)',
+          bg: 'var(--tg-bg, #0b2a13)',
+          text: 'var(--tg-text, #ffffff)',
+          hint: 'var(--tg-hint, #93c39d)',
+          link: 'var(--tg-link, #2fce63)',
+          button: 'var(--tg-button, #2fce63)',
 
           // Было buttonText
-          'button-text': 'var(--tg-button-text, #ffffff)',
+          'button-text': 'var(--tg-button-text, #06230d)',
 
           // Было secondaryBg
-          'secondary-bg': 'var(--tg-secondary-bg, #f2f2f7)',
+          'secondary-bg': 'var(--tg-secondary-bg, #1a6b2e)',
 
           // Было section
-          'section-bg': 'var(--tg-section-bg, #ffffff)',
+          'section-bg': 'var(--tg-section-bg, #123a1e)',
 
-          separator: 'var(--tg-separator, #e5e5ea)',
+          separator: 'var(--tg-separator, #1f5029)',
         },
       },
     },
