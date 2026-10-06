@@ -1,3 +1,5 @@
+import { useAdminModal } from "./AdminUI";
+import { AdminTabs } from "./AdminUI";
 import { useEffect, useState } from "react";
 import { apiFetch } from "./api";
 type Row = Record<string, string | number | boolean>;
@@ -35,6 +37,7 @@ const labels: Record<string, string> = {
   road_factor: "Коэффициент длины дороги",
 };
 export function DeliveryAdmin() {
+  const [section, setSection] = useState("warehouse");
   const [warehouses, setWarehouses] = useState<Row[]>([]),
     [couriers, setCouriers] = useState<Row[]>([]),
     [settings, setSettings] = useState<Row | null>(null),
@@ -78,6 +81,7 @@ export function DeliveryAdmin() {
       setBusy(false);
     }
   };
+  useAdminModal(!!form, () => setForm(null));
   return (
     <div className="space-y-5 text-gray-900">
       <h1 className="text-2xl font-bold">Доставка</h1>
@@ -104,51 +108,69 @@ export function DeliveryAdmin() {
           {saved}
         </p>
       )}
+      <AdminTabs
+        tabs={[
+          { id: "warehouse", label: "Склады", count: warehouses.length },
+          { id: "courier", label: "Курьеры", count: couriers.length },
+          { id: "tariff", label: "Тарифы" },
+        ]}
+        value={section}
+        onChange={setSection}
+      />
       {[
         ["warehouse", "Склады", warehouses],
         ["courier", "Курьеры", couriers],
-      ].map(([type, title, rows]) => (
-        <section key={String(type)} className="bg-white border rounded-2xl p-5">
-          <div className="flex justify-between">
-            <h2 className="font-semibold">{String(title)}</h2>
-            <button
-              onClick={() => {
-                setKind(String(type));
-                setForm({
-                  ...(type === "warehouse" ? warehouseDefault : courierDefault),
-                });
-              }}
-              className="text-sm text-green-700"
-            >
-              + Добавить
-            </button>
-          </div>
-          {(rows as Row[]).length ? (
-            (rows as Row[]).map((row) => (
+      ]
+        .filter(([type]) => type === section)
+        .map(([type, title, rows]) => (
+          <section
+            key={String(type)}
+            className="bg-white border rounded-2xl p-5"
+          >
+            <div className="flex justify-between">
+              <h2 className="font-semibold">{String(title)}</h2>
               <button
-                key={String(row.id)}
                 onClick={() => {
                   setKind(String(type));
-                  setForm(row);
+                  setForm({
+                    ...(type === "warehouse"
+                      ? warehouseDefault
+                      : courierDefault),
+                  });
                 }}
-                className="w-full text-left border-t mt-3 pt-3"
+                className="text-sm text-green-700"
               >
-                <span className="font-medium text-sm">{String(row.name)}</span>
-                <span className="text-xs text-gray-500 block">
-                  {String(row.address || row.phone || "")} ·{" "}
-                  {row.active ? "Активен" : "Отключён"}
-                  {type === "courier"
-                    ? ` · ${warehouses.find((w) => w.id === row.warehouse_id)?.name || "Склад не выбран"}`
-                    : ""}
-                </span>
+                + Добавить
               </button>
-            ))
-          ) : (
-            <p className="text-sm text-gray-500 mt-3">Пока не добавлены</p>
-          )}
-        </section>
-      ))}
-      {settings && (
+            </div>
+            {(rows as Row[]).length ? (
+              (rows as Row[]).map((row) => (
+                <button
+                  key={String(row.id)}
+                  onClick={() => {
+                    setKind(String(type));
+                    setForm(row);
+                  }}
+                  className="w-full text-left border-t mt-3 pt-3"
+                >
+                  <span className="font-medium text-sm">
+                    {String(row.name)}
+                  </span>
+                  <span className="text-xs text-gray-500 block">
+                    {String(row.address || row.phone || "")} ·{" "}
+                    {row.active ? "Активен" : "Отключён"}
+                    {type === "courier"
+                      ? ` · ${warehouses.find((w) => w.id === row.warehouse_id)?.name || "Склад не выбран"}`
+                      : ""}
+                  </span>
+                </button>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500 mt-3">Пока не добавлены</p>
+            )}
+          </section>
+        ))}
+      {settings && section === "tariff" && (
         <section className="bg-white border rounded-2xl p-5 space-y-3">
           <h2 className="font-semibold">Тарифы и расчёт</h2>
           <div className="grid sm:grid-cols-2 gap-3">

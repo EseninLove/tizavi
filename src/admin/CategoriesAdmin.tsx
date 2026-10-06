@@ -1,3 +1,4 @@
+import { useAdminModal } from "./AdminUI";
 import { useEffect, useState } from "react";
 import { categoriesApi, productsApi } from "./api";
 
@@ -113,6 +114,7 @@ export function CategoriesAdmin() {
     else setError(res.error);
   };
 
+  useAdminModal(showForm, () => setShowForm(false));
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -145,12 +147,23 @@ export function CategoriesAdmin() {
           <div className="divide-y divide-gray-100">
             {categories.map((c) => (
               <div key={c.id} className="p-4 flex items-center gap-3">
+                {c.image ? (
+                  <img
+                    src={c.image}
+                    alt=""
+                    className="w-11 h-11 rounded-xl object-cover"
+                  />
+                ) : (
+                  <span className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center text-xl">
+                    {c.icon || "▦"}
+                  </span>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-gray-900">
                     {c.name}
                   </div>
                   <div className="text-xs text-gray-400">
-                    slug: {c.slug} · {countProducts(c.slug)} товаров
+                    {countProducts(c.slug)} товаров · Порядок: {c.sort_order}
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
@@ -161,6 +174,12 @@ export function CategoriesAdmin() {
                     Изменить
                   </button>
                   <button
+                    disabled={countProducts(c.slug) > 0}
+                    title={
+                      countProducts(c.slug) > 0
+                        ? "Перенесите товары в другую категорию перед удалением"
+                        : undefined
+                    }
                     onClick={() => handleDelete(c)}
                     className="text-red-500 hover:text-red-700 text-sm font-medium active:scale-95 transition-all"
                   >
@@ -176,6 +195,9 @@ export function CategoriesAdmin() {
       {/* Modal form */}
       {showForm && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Категория"
           className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center p-0 md:p-4"
           onClick={() => setShowForm(false)}
         >

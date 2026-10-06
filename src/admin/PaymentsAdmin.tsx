@@ -108,7 +108,7 @@ export function PaymentsAdmin() {
               >
                 <strong>{p.name}</strong>
                 <p className="text-xs text-gray-500 mt-1">
-                  {p.connected ? "Ключи подключены" : "Ключи не подключены"}
+                  {p.connected ? "Ключи сохранены" : "Ключи не добавлены"}
                   {data.activeProvider === p.id ? " · Выбран для оплаты" : ""}
                 </p>
               </button>
@@ -116,6 +116,15 @@ export function PaymentsAdmin() {
           </div>
           <section className="bg-white border rounded-2xl p-5 space-y-4">
             <h2 className="font-semibold">Подключение {selected?.name}</h2>
+            <div className="admin-setup-steps">
+              <span className="active">1. Ключи</span>
+              <span>2. Уведомления</span>
+              <span>3. Активация</span>
+            </div>
+            <p className="admin-hint">
+              Сохранение ключей не подтверждает связь с агрегатором. После
+              настройки проведите тестовую оплату.
+            </p>
             <label className="block text-sm">
               Адрес опубликованного магазина
               <input
@@ -146,7 +155,7 @@ export function PaymentsAdmin() {
                   }
                   placeholder={
                     selected.connected
-                      ? "Подключён. Оставьте пустым, чтобы сохранить"
+                      ? "Сохранён. Оставьте пустым, чтобы сохранить"
                       : "Введите ключ"
                   }
                   className="admin-input mt-1"

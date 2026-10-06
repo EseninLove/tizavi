@@ -25,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `;
 
     const recentOrders = await sql`
-      SELECT id, order_number, total, status, customer_name, created_at
+      SELECT id, order_number, total, payable_total, payment_status, status, customer_name, created_at
       FROM orders
       ORDER BY created_at DESC
       LIMIT 10

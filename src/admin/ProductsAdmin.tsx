@@ -1,3 +1,5 @@
+import { useAdminModal } from "./AdminUI";
+import { AdminSearch, AdminTabs } from "./AdminUI";
 import { useEffect, useState, type ReactNode } from "react";
 import { productsApi, categoriesApi } from "./api";
 import { formatPrice, formatWeight } from "../utils/format";
@@ -57,6 +59,10 @@ const emptyForm = {
 };
 
 export function ProductsAdmin() {
+  const [formTab, setFormTab] = useState("main");
+  const [search, setSearch] = useState(""),
+    [categoryFilter, setCategoryFilter] = useState("all"),
+    [stockFilter, setStockFilter] = useState("all");
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,6 +76,7 @@ export function ProductsAdmin() {
     setLoading(true);
     productsApi.list().then((res) => {
       if (res.ok) setProducts(res.products);
+      else setError(res.error);
       setLoading(false);
     });
     categoriesApi.list().then((res) => {
@@ -82,6 +89,7 @@ export function ProductsAdmin() {
   const openCreate = () => {
     setForm({ ...emptyForm });
     setEditing(null);
+    setFormTab("main");
     setShowForm(true);
   };
 
@@ -106,6 +114,7 @@ export function ProductsAdmin() {
       weight: p.weight ? String(p.weight) : "",
     });
     setEditing(p);
+    setFormTab("main");
     setShowForm(true);
   };
 
@@ -178,6 +187,21 @@ export function ProductsAdmin() {
     return "";
   })();
 
+  const filteredProducts = products.filter(
+    (p) =>
+      (categoryFilter === "all" || p.category === categoryFilter) &&
+      (stockFilter === "all" ||
+        (stockFilter === "stock"
+          ? p.in_stock
+          : stockFilter === "out"
+            ? !p.in_stock
+            : !!p.old_price || !!p.badge)) &&
+      [p.name, p.brand, p.synonyms]
+        .join(" ")
+        .toLowerCase()
+        .includes(search.trim().toLowerCase()),
+  );
+  useAdminModal(showForm, () => setShowForm(false));
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -193,15 +217,51 @@ export function ProductsAdmin() {
         </button>
       </div>
 
+      <div className="admin-toolbar">
+        <AdminSearch
+          value={search}
+          onChange={setSearch}
+          placeholder="Название, бренд или синоним"
+        />
+        <select
+          className="admin-input"
+          style={{ width: 210 }}
+          aria-label="Категория товара"
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
+          <option value="all">Все категории</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.slug}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <AdminTabs
+        tabs={[
+          { id: "all", label: "Все товары", count: products.length },
+          { id: "stock", label: "В наличии" },
+          { id: "out", label: "Нет в наличии" },
+          { id: "promo", label: "Акции" },
+        ]}
+        value={stockFilter}
+        onChange={setStockFilter}
+      />
+      {error && !showForm && (
+        <p role="alert" className="text-red-600">
+          {error}
+        </p>
+      )}
       {loading ? (
         <div className="text-center py-20 text-gray-400 animate-pulse">
           Загрузка...
         </div>
-      ) : products.length === 0 ? (
+      ) : filteredProducts.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-          <p className="text-gray-400 mb-2">Товаров пока нет</p>
+          <p className="text-gray-400 mb-2">Товаров не найдено</p>
           <p className="text-sm text-gray-400">
-            Добавьте первый товар или инициализируйте БД в «Настройках»
+            Измените фильтры или добавьте новый товар
           </p>
         </div>
       ) : (
@@ -219,7 +279,7 @@ export function ProductsAdmin() {
                 </tr>
               </thead>
               <tbody>
-                {products.map((p) => (
+                {filteredProducts.map((p) => (
                   <tr
                     key={p.id}
                     className="border-b border-gray-100 hover:bg-gray-50"
@@ -288,7 +348,7 @@ export function ProductsAdmin() {
 
           {/* Mobile cards */}
           <div className="md:hidden divide-y divide-gray-100">
-            {products.map((p) => (
+            {filteredProducts.map((p) => (
               <div key={p.id} className="p-4 flex items-center gap-3">
                 <img
                   src={p.image}
@@ -332,11 +392,14 @@ export function ProductsAdmin() {
       {/* Modal form */}
       {showForm && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Карточка товара"
           className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center p-0 md:p-4"
           onClick={() => setShowForm(false)}
         >
           <div
-            className="bg-white w-full md:max-w-lg md:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto"
+            className="bg-white w-full md:max-w-lg admin-modal-wide md:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-white border-b border-gray-200 px-5 py-4 flex items-center justify-between">
@@ -352,152 +415,25 @@ export function ProductsAdmin() {
             </div>
 
             <div className="p-5 space-y-4">
-              <FormField label="Название *">
-                <input
-                  className="admin-input"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </FormField>
-
-              <FormField label="Бренд">
-                <input
-                  className="admin-input"
-                  value={form.brand}
-                  onChange={(e) => setForm({ ...form, brand: e.target.value })}
-                />
-              </FormField>
-              <FormField label="Синонимы для поиска">
-                <input
-                  className="admin-input"
-                  value={form.synonyms}
-                  onChange={(e) =>
-                    setForm({ ...form, synonyms: e.target.value })
-                  }
-                  placeholder="Другие названия через запятую"
-                />
-              </FormField>
-              <FormField label="Упаковка">
-                <input
-                  className="admin-input"
-                  value={form.package_label}
-                  onChange={(e) =>
-                    setForm({ ...form, package_label: e.target.value })
-                  }
-                  placeholder="500 г / 1 л / 10 шт."
-                />
-              </FormField>
-              <label className="flex gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.popular}
-                  onChange={(e) =>
-                    setForm({ ...form, popular: e.target.checked })
-                  }
-                />
-                Показывать в популярном
-              </label>
-              <label className="flex gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.seasonal}
-                  onChange={(e) =>
-                    setForm({ ...form, seasonal: e.target.checked })
-                  }
-                />
-                Сезонный товар
-              </label>
-              <FormField label="Описание">
-                <textarea
-                  className="admin-input resize-none"
-                  rows={3}
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm({ ...form, description: e.target.value })
-                  }
-                />
-              </FormField>
-
-              <div className="grid grid-cols-2 gap-3">
-                <FormField label="Цена (₽) *">
+              <AdminTabs
+                tabs={[
+                  { id: "main", label: "Основное" },
+                  { id: "price", label: "Цена и упаковка" },
+                  { id: "photo", label: "Фото" },
+                  { id: "promo", label: "Продвижение" },
+                ]}
+                value={formTab}
+                onChange={setFormTab}
+              />
+              <div hidden={formTab !== "main"} className="space-y-4">
+                {" "}
+                <FormField label="Название *">
                   <input
-                    type="number"
                     className="admin-input"
-                    value={form.price}
-                    onChange={(e) =>
-                      setForm({ ...form, price: e.target.value })
-                    }
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
                   />
                 </FormField>
-                <FormField label="Старая цена (₽)">
-                  <input
-                    type="number"
-                    className="admin-input"
-                    value={form.old_price}
-                    onChange={(e) =>
-                      setForm({ ...form, old_price: e.target.value })
-                    }
-                  />
-                </FormField>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <FormField label="Единица продажи *">
-                  <select
-                    className="admin-input"
-                    value={form.unit}
-                    onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                  >
-                    <option value="шт">шт — штучной товар</option>
-                    <option value="кг">кг — на вес</option>
-                    <option value="л">л — на розлив</option>
-                  </select>
-                </FormField>
-                <FormField
-                  label={
-                    form.unit === "кг"
-                      ? "Цена за 1 кг"
-                      : form.unit === "л"
-                        ? "Цена за 1 л"
-                        : "Вес фасовки (кг)"
-                  }
-                >
-                  {form.unit === "шт" ? (
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="admin-input"
-                      value={form.weight}
-                      onChange={(e) =>
-                        setForm({ ...form, weight: e.target.value })
-                      }
-                      placeholder="0.5 = 500 г"
-                    />
-                  ) : (
-                    <div className="admin-input bg-gray-50 text-gray-500 select-none">
-                      —
-                    </div>
-                  )}
-                </FormField>
-              </div>
-
-              {perKgHint && (
-                <div className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
-                  {perKgHint}
-                </div>
-              )}
-
-              <FormField label="URL изображения">
-                <input
-                  className="admin-input"
-                  value={form.image}
-                  onChange={(e) => setForm({ ...form, image: e.target.value })}
-                  placeholder="https://..."
-                />
-              </FormField>
-
-              <div className="grid grid-cols-2 gap-3">
                 <FormField label="Категория">
                   <select
                     className="admin-input"
@@ -514,6 +450,171 @@ export function ProductsAdmin() {
                     ))}
                   </select>
                 </FormField>
+                <FormField label="Описание">
+                  <textarea
+                    className="admin-input resize-none"
+                    rows={3}
+                    value={form.description}
+                    onChange={(e) =>
+                      setForm({ ...form, description: e.target.value })
+                    }
+                  />
+                </FormField>
+                <FormField label="Бренд">
+                  <input
+                    className="admin-input"
+                    value={form.brand}
+                    onChange={(e) =>
+                      setForm({ ...form, brand: e.target.value })
+                    }
+                  />
+                </FormField>
+                <FormField label="Синонимы для поиска">
+                  <input
+                    className="admin-input"
+                    value={form.synonyms}
+                    onChange={(e) =>
+                      setForm({ ...form, synonyms: e.target.value })
+                    }
+                    placeholder="Другие названия через запятую"
+                  />
+                </FormField>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.in_stock}
+                    onChange={(e) =>
+                      setForm({ ...form, in_stock: e.target.checked })
+                    }
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-gray-700">В наличии</span>
+                </label>
+              </div>
+              <div hidden={formTab !== "price"} className="space-y-4">
+                {" "}
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField label="Цена (₽) *">
+                    <input
+                      type="number"
+                      className="admin-input"
+                      value={form.price}
+                      onChange={(e) =>
+                        setForm({ ...form, price: e.target.value })
+                      }
+                    />
+                  </FormField>
+                  <FormField label="Старая цена (₽)">
+                    <input
+                      type="number"
+                      className="admin-input"
+                      value={form.old_price}
+                      onChange={(e) =>
+                        setForm({ ...form, old_price: e.target.value })
+                      }
+                    />
+                  </FormField>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField label="Единица продажи *">
+                    <select
+                      className="admin-input"
+                      value={form.unit}
+                      onChange={(e) =>
+                        setForm({ ...form, unit: e.target.value })
+                      }
+                    >
+                      <option value="шт">шт — штучной товар</option>
+                      <option value="кг">кг — на вес</option>
+                      <option value="л">л — на розлив</option>
+                    </select>
+                  </FormField>
+                  <FormField
+                    label={
+                      form.unit === "кг"
+                        ? "Цена за 1 кг"
+                        : form.unit === "л"
+                          ? "Цена за 1 л"
+                          : "Вес фасовки (кг)"
+                    }
+                  >
+                    {form.unit === "шт" ? (
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="admin-input"
+                        value={form.weight}
+                        onChange={(e) =>
+                          setForm({ ...form, weight: e.target.value })
+                        }
+                        placeholder="0.5 = 500 г"
+                      />
+                    ) : (
+                      <div className="admin-input bg-gray-50 text-gray-500 select-none">
+                        —
+                      </div>
+                    )}
+                  </FormField>
+                </div>
+                {perKgHint && (
+                  <div className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
+                    {perKgHint}
+                  </div>
+                )}
+                <FormField label="Упаковка">
+                  <input
+                    className="admin-input"
+                    value={form.package_label}
+                    onChange={(e) =>
+                      setForm({ ...form, package_label: e.target.value })
+                    }
+                    placeholder="500 г / 1 л / 10 шт."
+                  />
+                </FormField>
+              </div>
+              <div hidden={formTab !== "photo"} className="space-y-4">
+                {" "}
+                <FormField label="URL изображения">
+                  <input
+                    className="admin-input"
+                    value={form.image}
+                    onChange={(e) =>
+                      setForm({ ...form, image: e.target.value })
+                    }
+                    placeholder="https://..."
+                  />
+                </FormField>
+                {form.image && (
+                  <img
+                    src={form.image}
+                    alt="Предпросмотр фотографии товара"
+                    className="w-40 h-40 rounded-xl object-cover"
+                  />
+                )}
+              </div>
+              <div hidden={formTab !== "promo"} className="space-y-4">
+                {" "}
+                <label className="flex gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.popular}
+                    onChange={(e) =>
+                      setForm({ ...form, popular: e.target.checked })
+                    }
+                  />
+                  Показывать в популярном
+                </label>
+                <label className="flex gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.seasonal}
+                    onChange={(e) =>
+                      setForm({ ...form, seasonal: e.target.checked })
+                    }
+                  />
+                  Сезонный товар
+                </label>
                 <FormField label="Бейдж">
                   <input
                     className="admin-input"
@@ -524,44 +625,30 @@ export function ProductsAdmin() {
                     placeholder="-20%"
                   />
                 </FormField>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField label="Оценка магазина">
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="admin-input"
+                      value={form.rating}
+                      onChange={(e) =>
+                        setForm({ ...form, rating: e.target.value })
+                      }
+                    />
+                  </FormField>
+                  <FormField label="Количество оценок магазина">
+                    <input
+                      type="number"
+                      className="admin-input"
+                      value={form.reviews_count}
+                      onChange={(e) =>
+                        setForm({ ...form, reviews_count: e.target.value })
+                      }
+                    />
+                  </FormField>
+                </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <FormField label="Оценка магазина">
-                  <input
-                    type="number"
-                    step="0.1"
-                    className="admin-input"
-                    value={form.rating}
-                    onChange={(e) =>
-                      setForm({ ...form, rating: e.target.value })
-                    }
-                  />
-                </FormField>
-                <FormField label="Количество оценок магазина">
-                  <input
-                    type="number"
-                    className="admin-input"
-                    value={form.reviews_count}
-                    onChange={(e) =>
-                      setForm({ ...form, reviews_count: e.target.value })
-                    }
-                  />
-                </FormField>
-              </div>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.in_stock}
-                  onChange={(e) =>
-                    setForm({ ...form, in_stock: e.target.checked })
-                  }
-                  className="w-4 h-4"
-                />
-                <span className="text-sm text-gray-700">В наличии</span>
-              </label>
-
               {error && (
                 <div className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">
                   {error}

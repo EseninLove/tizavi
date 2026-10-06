@@ -1,29 +1,49 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ordersApi } from "./api";
-import { formatPrice, formatDate } from "../utils/format";
-
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending: { label: "Ожидает", color: "bg-amber-100 text-amber-700" },
-  paid: { label: "Оплачен", color: "bg-green-100 text-green-700" },
-  shipped: { label: "Отправлен", color: "bg-blue-100 text-blue-700" },
-  delivered: { label: "Доставлен", color: "bg-emerald-100 text-emerald-700" },
-  cancelled: { label: "Отменён", color: "bg-red-100 text-red-700" },
+import { formatPrice } from "../utils/format";
+import {
+  AdminHeader,
+  AdminSearch,
+  AdminTabs,
+  AdminNotice,
+  AdminEmpty,
+  AdminDetail,
+  AdminBadge,
+  AdminPager,
+  AdminIcon,
+  adminDate,
+  moscowDay,
+} from "./AdminUI";
+const statuses: Record<string, string> = {
+  pending: "Ожидает оплаты",
+  paid: "В обработке",
+  shipped: "В доставке",
+  delivered: "Доставлен",
+  cancelled: "Отменён",
 };
-
-const PAYMENT_LABELS: Record<string, string> = {
+const payments: Record<string, string> = {
   pending: "Не оплачен",
   succeeded: "Оплачен",
   canceled: "Оплата отменена",
-  unverified: "Оплата требует проверки",
+  unverified: "Требует проверки",
 };
-const STATUS_FLOW = ["pending", "paid", "shipped", "delivered", "cancelled"];
-
+const paymentTone = (s: string) =>
+  s === "succeeded" ? "success" : s === "canceled" ? "danger" : "warning";
+const statusTone = (s: string) =>
+  s === "delivered"
+    ? "success"
+    : s === "shipped"
+      ? "info"
+      : s === "cancelled"
+        ? "danger"
+        : "neutral";
 interface OrderRow {
   id: number;
   order_number: string;
   items: Array<{
     product_id: string;
-    product: { name: string; image: string; price: number };
+    product: { name: string; image: string; price: number; unit?: string };
+    lineTotalMinor?: number;
     quantity: number;
   }>;
   total: number;
@@ -46,266 +66,435 @@ interface OrderRow {
 }
 
 export function OrdersAdmin() {
-  const [orders, setOrders] = useState<OrderRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
-  const [selected, setSelected] = useState<OrderRow | null>(null);
-  const [error, setError] = useState("");
-
-  const load = (status?: string) => {
+  const [orders, setOrders] = useState<OrderRow[]>([]),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState(""),
+    [search, setSearch] = useState(""),
+    [filter, setFilter] = useState("all"),
+    [payment, setPayment] = useState("all"),
+    [day, setDay] = useState(""),
+    [page, setPage] = useState(1),
+    [selectedId, setSelectedId] = useState<number | null>(null),
+    [tab, setTab] = useState("items"),
+    [busy, setBusy] = useState(false);
+  const close = useCallback(() => setSelectedId(null), []);
+  const load = useCallback(async () => {
     setLoading(true);
-    ordersApi.list(status).then((res) => {
-      if (res.ok) setOrders(res.orders);
-      else setError(res.error);
+    setError("");
+    try {
+      const r = await ordersApi.list();
+      if (!r.ok) throw new Error(r.error);
+      setOrders(r.orders);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось загрузить заказы");
+    } finally {
       setLoading(false);
-    });
-  };
-
+    }
+  }, []);
   useEffect(() => {
-    load(filter === "all" ? undefined : filter);
-  }, [filter]);
-
-  const updateStatus = async (id: number, status: string) => {
-    const res = await ordersApi.updateStatus(id, status);
-    if (res.ok) {
-      setSelected(null);
-      load(filter === "all" ? undefined : filter);
-    } else setError(res.error);
+    void load();
+  }, [load]);
+  useEffect(() => setPage(1), [search, filter, payment, day]);
+  const selected = orders.find((o) => o.id === selectedId),
+    today = moscowDay(new Date());
+  const filtered = orders.filter(
+    (o) =>
+      (filter === "all" || o.status === filter) &&
+      (payment === "all" || o.payment_status === payment) &&
+      (!day || moscowDay(o.created_at) === day) &&
+      [
+        o.order_number,
+        o.customer_name,
+        o.customer_phone,
+        o.delivery?.name,
+        o.delivery?.phone,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(search.toLowerCase().trim()),
+  );
+  const pages = Math.max(1, Math.ceil(filtered.length / 20)),
+    current = Math.min(page, pages),
+    visible = filtered.slice((current - 1) * 20, current * 20);
+  const update = async (status: string) => {
+    if (!selected || busy) return;
+    if (
+      status === "cancelled" &&
+      !window.confirm(
+        "Отменить заказ? Возврат оплаченных средств необходимо оформить отдельно у платёжного сервиса.",
+      )
+    )
+      return;
+    setBusy(true);
+    setError("");
+    try {
+      const r = await ordersApi.updateStatus(selected.id, status);
+      if (!r.ok) throw new Error(r.error);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось обновить заказ");
+    } finally {
+      setBusy(false);
+    }
   };
-
+  const open = (id: number) => {
+    setSelectedId(id);
+    setTab("items");
+  };
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Заказы{" "}
-          <span className="text-gray-400 text-lg">({orders.length})</span>
-        </h1>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto no-scrollbar">
-        <FilterChip
-          label="Все"
-          active={filter === "all"}
-          onClick={() => setFilter("all")}
-        />
-        {STATUS_FLOW.map((s) => (
-          <FilterChip
-            key={s}
-            label={STATUS_LABELS[s]?.label || s}
-            active={filter === s}
-            onClick={() => setFilter(s)}
-          />
-        ))}
-      </div>
-
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {loading ? (
-        <div className="text-center py-20 text-gray-400 animate-pulse">
-          Загрузка...
-        </div>
-      ) : orders.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-          <p className="text-gray-400">Заказов нет</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {orders.map((order) => {
-            const info = STATUS_LABELS[order.status] || {
-              label: order.status,
-              color: "bg-gray-100 text-gray-700",
-            };
-            return (
-              <div
-                key={order.id}
-                onClick={() => setSelected(order)}
-                className="bg-white rounded-2xl border border-gray-200 p-4 cursor-pointer hover:border-gray-300 transition-all active:scale-[0.99]"
-              >
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <div className="min-w-0">
-                    <div className="text-sm font-bold text-gray-900">
-                      {order.order_number}
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      {formatDate(new Date(order.created_at).getTime())}
-                    </div>
-                  </div>
-                  <span
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 ${info.color}`}
-                  >
-                    {info.label}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-sm text-gray-600">
-                      {order.customer_name || order.delivery?.name || "Гость"}
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      {order.items?.length || 0} поз. ·{" "}
-                      {PAYMENT_LABELS[order.payment_status] ||
-                        "Статус оплаты неизвестен"}
-                    </div>
-                  </div>
-                  <div className="text-lg font-bold text-gray-900 shrink-0">
-                    {formatPrice(Number(order.payable_total))}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Order detail modal */}
-      {selected && (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center p-0 md:p-4"
-          onClick={() => setSelected(null)}
+    <div>
+      <AdminHeader
+        title="Заказы"
+        subtitle="Оплата, сборка и доставка — в одном месте"
+      >
+        <button
+          className="admin-button"
+          onClick={() => void load()}
+          disabled={loading}
         >
-          <div
-            className="bg-white w-full md:max-w-lg md:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-5 py-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900">
-                {selected.order_number}
-              </h2>
-              <button
-                onClick={() => setSelected(null)}
-                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-              >
-                ×
-              </button>
+          <AdminIcon name="refresh" />
+          Обновить
+        </button>
+      </AdminHeader>
+      <div className="admin-stats">
+        {[
+          {
+            label: "Заказов сегодня",
+            value: orders.filter((o) => moscowDay(o.created_at) === today)
+              .length,
+            icon: "orders",
+          },
+          {
+            label: "Ждут обработки",
+            value: orders.filter(
+              (o) => o.status === "paid" && o.payment_status === "succeeded",
+            ).length,
+            icon: "check",
+          },
+          {
+            label: "Не оплачены",
+            value: orders.filter(
+              (o) => o.payment_status === "pending" && o.status !== "cancelled",
+            ).length,
+            icon: "clock",
+          },
+          {
+            label: "В доставке",
+            value: orders.filter((o) => o.status === "shipped").length,
+            icon: "delivery",
+          },
+        ].map((x) => (
+          <div key={x.label} className="admin-stat">
+            <div className="admin-stat-icon">
+              <AdminIcon name={x.icon} />
             </div>
-
-            <div className="p-5 space-y-5">
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              <p className="text-sm font-semibold">
-                {PAYMENT_LABELS[selected.payment_status] ||
-                  "Статус оплаты неизвестен"}
-              </p>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">Статус:</span>
-                <span
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${(STATUS_LABELS[selected.status] || {}).color || "bg-gray-100"}`}
-                >
-                  {(STATUS_LABELS[selected.status] || {}).label ||
-                    selected.status}
-                </span>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                  Состав заказа
-                </h3>
-                <div className="space-y-2">
-                  {selected.items?.map((item, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      {item.product?.image && (
-                        <img
-                          src={item.product.image}
-                          alt=""
-                          className="w-10 h-10 rounded-lg object-cover bg-gray-100"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm text-gray-900 truncate">
-                          {item.product?.name || "Товар"}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {item.quantity} шт.
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between">
-                  <span className="text-sm font-semibold text-gray-700">
-                    Сумма
-                  </span>
-                  <span className="text-lg font-bold text-gray-900">
-                    {formatPrice(Number(selected.payable_total))}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                  Доставка
-                </h3>
-                <div className="bg-gray-50 rounded-xl p-3 space-y-1 text-sm">
-                  <div className="text-gray-900">
-                    {selected.delivery?.name || selected.customer_name}
-                  </div>
-                  <div className="text-gray-500">
-                    {selected.delivery?.phone || selected.customer_phone}
-                  </div>
-                  {selected.delivery?.deliveryType === "courier" && (
-                    <div className="text-gray-500">
-                      {selected.delivery?.city}, {selected.delivery?.address}
-                    </div>
-                  )}
-                  {selected.delivery?.deliveryType === "pickup" && (
-                    <div className="text-gray-500">Самовывоз</div>
-                  )}
-                  {selected.delivery?.comment && (
-                    <div className="text-gray-400 italic mt-1">
-                      «{selected.delivery.comment}»
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                  Изменить статус
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {["shipped", "delivered", "cancelled"].map((s) => {
-                    const info = STATUS_LABELS[s];
-                    return (
-                      <button
-                        key={s}
-                        onClick={() => updateStatus(selected.id, s)}
-                        className={`px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95 ${
-                          selected.status === s
-                            ? info.color + " ring-2 ring-offset-1 ring-gray-300"
-                            : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-                        }`}
-                      >
-                        {info.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+            <div>
+              <small>{x.label}</small>
+              <strong>{x.value}</strong>
             </div>
           </div>
+        ))}
+      </div>
+      <div className="admin-toolbar">
+        <AdminSearch
+          value={search}
+          onChange={setSearch}
+          placeholder="Номер заказа, покупатель или телефон"
+        />
+        <input
+          className="admin-input"
+          style={{ width: 160 }}
+          type="date"
+          aria-label="Дата заказа по Москве"
+          value={day}
+          onChange={(e) => setDay(e.target.value)}
+        />
+        <select
+          className="admin-input"
+          style={{ width: 180 }}
+          aria-label="Статус оплаты"
+          value={payment}
+          onChange={(e) => setPayment(e.target.value)}
+        >
+          <option value="all">Любая оплата</option>
+          {Object.entries(payments).map(([v, l]) => (
+            <option key={v} value={v}>
+              {l}
+            </option>
+          ))}
+        </select>
+        {(day || payment !== "all" || search || filter !== "all") && (
+          <button
+            className="admin-button"
+            onClick={() => {
+              setDay("");
+              setPayment("all");
+              setSearch("");
+              setFilter("all");
+            }}
+          >
+            Сбросить
+          </button>
+        )}
+      </div>
+      <AdminTabs
+        tabs={[
+          { id: "all", label: "Все", count: orders.length },
+          ...Object.entries(statuses).map(([id, label]) => ({
+            id,
+            label,
+            count: orders.filter((o) => o.status === id).length,
+          })),
+        ]}
+        value={filter}
+        onChange={setFilter}
+      />
+      {error && <AdminNotice>{error}</AdminNotice>}
+      <div className={`admin-split ${selected ? "has-detail" : ""}`}>
+        <div>
+          {loading ? (
+            <AdminEmpty title="Загрузка заказов…" />
+          ) : !filtered.length ? (
+            <AdminEmpty
+              title="Заказов не найдено"
+              description="Измените поиск или фильтры"
+            />
+          ) : (
+            <>
+              <div className="admin-table-wrap admin-order-desktop">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      {[
+                        "Заказ",
+                        "Покупатель",
+                        "Сумма",
+                        "Оплата",
+                        "Доставка",
+                        "",
+                      ].map((x, i) => (
+                        <th key={i}>{x}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visible.map((o) => (
+                      <tr
+                        key={o.id}
+                        className={o.id === selectedId ? "selected" : ""}
+                      >
+                        <td>
+                          <button
+                            className="admin-order-open"
+                            onClick={() => open(o.id)}
+                          >
+                            {o.order_number}
+                            <span>{adminDate(o.created_at)}</span>
+                          </button>
+                        </td>
+                        <td>
+                          {o.customer_name || o.delivery?.name || "Гость"}
+                          <div className="admin-hint">
+                            {o.items?.length || 0} позиций
+                          </div>
+                        </td>
+                        <td className="admin-money">
+                          {formatPrice(Number(o.payable_total))}
+                        </td>
+                        <td>
+                          <AdminBadge tone={paymentTone(o.payment_status)}>
+                            {payments[o.payment_status] || "Неизвестно"}
+                          </AdminBadge>
+                        </td>
+                        <td>
+                          <AdminBadge tone={statusTone(o.status)}>
+                            {statuses[o.status] || o.status}
+                          </AdminBadge>
+                        </td>
+                        <td>
+                          <button
+                            className="admin-icon-button"
+                            aria-label={`Открыть заказ ${o.order_number}`}
+                            onClick={() => open(o.id)}
+                          >
+                            <AdminIcon name="chevron" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="admin-mobile-orders">
+                {visible.map((o) => (
+                  <button
+                    className={`admin-order-mobile ${o.id === selectedId ? "selected" : ""}`}
+                    key={o.id}
+                    onClick={() => open(o.id)}
+                  >
+                    <div>
+                      <strong>{o.order_number}</strong>
+                      <strong>{formatPrice(Number(o.payable_total))}</strong>
+                    </div>
+                    <div>
+                      {o.customer_name || o.delivery?.name || "Гость"}
+                      <small>{adminDate(o.created_at)}</small>
+                    </div>
+                    <div>
+                      <AdminBadge tone={paymentTone(o.payment_status)}>
+                        {payments[o.payment_status] || "Неизвестно"}
+                      </AdminBadge>
+                      <AdminBadge tone={statusTone(o.status)}>
+                        {statuses[o.status] || o.status}
+                      </AdminBadge>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <AdminPager
+                page={current}
+                pages={pages}
+                total={filtered.length}
+                onChange={setPage}
+              />
+            </>
+          )}
         </div>
-      )}
+        {selected && (
+          <AdminDetail
+            title={selected.order_number}
+            onClose={close}
+            footer={
+              <>
+                {selected.payment_status === "succeeded" &&
+                ["paid", "shipped"].includes(selected.status) ? (
+                  <button
+                    className="admin-primary"
+                    disabled={busy}
+                    onClick={() =>
+                      void update(
+                        selected.status === "paid" ? "shipped" : "delivered",
+                      )
+                    }
+                  >
+                    {busy
+                      ? "Сохраняем…"
+                      : selected.status === "paid"
+                        ? "Передать в доставку"
+                        : "Отметить доставленным"}
+                  </button>
+                ) : (
+                  <p className="admin-detail-action-note">
+                    {selected.status === "cancelled"
+                      ? "Заказ отменён"
+                      : selected.status === "delivered"
+                        ? "Заказ доставлен"
+                        : "Доставка доступна после подтверждения оплаты сервером"}
+                  </p>
+                )}
+                {!["cancelled", "delivered"].includes(selected.status) && (
+                  <details className="admin-secondary-actions">
+                    <summary>Другие действия</summary>
+                    <button
+                      className="admin-button admin-danger"
+                      disabled={busy}
+                      onClick={() => void update("cancelled")}
+                    >
+                      Отменить заказ
+                    </button>
+                  </details>
+                )}
+              </>
+            }
+          >
+            <div className="admin-row-actions" style={{ marginBottom: 16 }}>
+              <AdminBadge tone={paymentTone(selected.payment_status)}>
+                {payments[selected.payment_status] || "Неизвестно"}
+              </AdminBadge>
+              <AdminBadge tone={statusTone(selected.status)}>
+                {statuses[selected.status]}
+              </AdminBadge>
+            </div>
+            {error && <AdminNotice>{error}</AdminNotice>}
+            <AdminTabs
+              tabs={[
+                { id: "items", label: "Состав" },
+                { id: "delivery", label: "Доставка" },
+              ]}
+              value={tab}
+              onChange={setTab}
+            />
+            {tab === "items" ? (
+              <>
+                <section className="admin-detail-section">
+                  <h3>Товары · {selected.items?.length || 0} позиций</h3>
+                  {selected.items?.map((i, n) => (
+                    <div className="admin-detail-item" key={n}>
+                      {i.product?.image && <img src={i.product.image} alt="" />}
+                      <div>
+                        {i.product?.name || "Товар"}
+                        <small>
+                          {i.quantity} {i.product?.unit || "шт"}
+                        </small>
+                      </div>
+                      <strong>
+                        {formatPrice(
+                          i.lineTotalMinor !== undefined
+                            ? i.lineTotalMinor / 100
+                            : Number(i.product?.price || 0) * i.quantity,
+                        )}
+                      </strong>
+                    </div>
+                  ))}
+                </section>
+                <section className="admin-detail-section admin-breakdown">
+                  <div>
+                    <span>Товары</span>
+                    <strong>{formatPrice(Number(selected.total))}</strong>
+                  </div>
+                  <div>
+                    <span>Доставка</span>
+                    <strong>
+                      {formatPrice(Number(selected.delivery_fee || 0))}
+                    </strong>
+                  </div>
+                  <div className="total">
+                    <span>Итого</span>
+                    <strong>
+                      {formatPrice(Number(selected.payable_total))}
+                    </strong>
+                  </div>
+                </section>
+              </>
+            ) : (
+              <section className="admin-detail-section">
+                <h3>Получатель</h3>
+                <p>{selected.delivery?.name || selected.customer_name}</p>
+                <p>{selected.delivery?.phone || selected.customer_phone}</p>
+                <h3 style={{ marginTop: 20 }}>Способ получения</h3>
+                <p>
+                  {selected.delivery?.deliveryType === "pickup"
+                    ? "Самовывоз"
+                    : [selected.delivery?.city, selected.delivery?.address]
+                        .filter(Boolean)
+                        .join(", ")}
+                </p>
+                {selected.delivery?.comment && (
+                  <>
+                    <h3 style={{ marginTop: 20 }}>Комментарий покупателя</h3>
+                    <p style={{ whiteSpace: "pre-wrap" }}>
+                      {selected.delivery.comment}
+                    </p>
+                  </>
+                )}
+              </section>
+            )}
+            <p className="admin-hint">
+              Создан {adminDate(selected.created_at)}
+            </p>
+          </AdminDetail>
+        )}
+      </div>
     </div>
-  );
-}
-
-function FilterChip({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all active:scale-95 ${
-        active
-          ? "bg-gray-900 text-white"
-          : "bg-white text-gray-600 border border-gray-200"
-      }`}
-    >
-      {label}
-    </button>
   );
 }

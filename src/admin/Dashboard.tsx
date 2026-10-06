@@ -1,3 +1,4 @@
+import { AdminIcon } from "./AdminUI";
 import { useEffect, useState } from "react";
 import { dashboardApi } from "./api";
 import { formatPrice, formatDate, formatNumber } from "../utils/format";
@@ -48,9 +49,9 @@ export function Dashboard() {
       <div className="text-center py-20">
         <p className="text-red-500 mb-4">{error || "Ошибка загрузки"}</p>
         <p className="text-sm text-gray-500">
-          Возможно, база данных ещё не инициализирована.
+          Не удалось получить данные магазина.
           <br />
-          Перейдите в раздел «Настройки» и нажмите «Инициализировать БД».
+          Проверьте соединение и попробуйте обновить страницу.
         </p>
       </div>
     );
@@ -60,30 +61,30 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Дашборд</h1>
+      <h1 className="text-2xl font-bold text-gray-900">Обзор магазина</h1>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          icon="📦"
+          icon="products"
           label="Товары"
           value={formatNumber(stats.products)}
           color="bg-blue-50"
         />
         <StatCard
-          icon="🛒"
+          icon="orders"
           label="Заказы"
           value={formatNumber(stats.orders)}
           color="bg-purple-50"
         />
         <StatCard
-          icon="👥"
+          icon="users"
           label="Пользователи"
           value={formatNumber(stats.users)}
           color="bg-green-50"
         />
         <StatCard
-          icon="💰"
-          label="Выручка"
+          icon="payments"
+          label="Оплачено за всё время"
           value={formatPrice(stats.revenue)}
           color="bg-amber-50"
         />
@@ -148,7 +149,9 @@ export function Dashboard() {
                         {info.label}
                       </span>
                       <span className="text-sm font-semibold text-gray-900">
-                        {formatPrice(order.total as number)}
+                        {formatPrice(
+                          Number(order.payable_total ?? order.total),
+                        )}
                       </span>
                     </div>
                   </div>
@@ -211,7 +214,7 @@ function StatCard({
       <div
         className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3 ${color}`}
       >
-        {icon}
+        <AdminIcon name={icon} />
       </div>
       <div className="text-2xl font-bold text-gray-900">{value}</div>
       <div className="text-xs text-gray-400 mt-0.5">{label}</div>

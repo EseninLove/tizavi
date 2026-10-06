@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { adminsApi } from './api';
-import { formatDate } from '../utils/format';
+import { useEffect, useState } from "react";
+import { adminsApi } from "./api";
+import { formatDate } from "../utils/format";
 
 interface AdminRow {
   id: number;
@@ -12,15 +12,16 @@ interface AdminRow {
 export function AdminsAdmin() {
   const [admins, setAdmins] = useState<AdminRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newId, setNewId] = useState('');
-  const [newRole, setNewRole] = useState('admin');
+  const [newId, setNewId] = useState("");
+  const [newRole, setNewRole] = useState("admin");
   const [adding, setAdding] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const load = () => {
     setLoading(true);
     adminsApi.list().then((res) => {
       if (res.ok) setAdmins(res.admins);
+      else setError(res.error);
       setLoading(false);
     });
   };
@@ -30,18 +31,18 @@ export function AdminsAdmin() {
   const handleAdd = async () => {
     if (!newId.trim() || adding) return;
     setAdding(true);
-    setError('');
+    setError("");
 
     try {
       const res = await adminsApi.add(Number(newId.trim()), newRole);
       if (res.ok) {
-        setNewId('');
+        setNewId("");
         load();
       } else {
-        setError(res.error || 'Ошибка');
+        setError(res.error || "Ошибка");
       }
     } catch {
-      setError('Ошибка соединения');
+      setError("Ошибка соединения");
     } finally {
       setAdding(false);
     }
@@ -56,11 +57,14 @@ export function AdminsAdmin() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">
-        Администраторы <span className="text-gray-400 text-lg">({admins.length})</span>
+        Сотрудники{" "}
+        <span className="text-gray-400 text-lg">({admins.length})</span>
       </h1>
 
       <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
-        <h2 className="text-sm font-semibold text-gray-700">Добавить админа</h2>
+        <h2 className="text-sm font-semibold text-gray-700">
+          Добавить сотрудника
+        </h2>
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="number"
@@ -74,27 +78,39 @@ export function AdminsAdmin() {
             value={newRole}
             onChange={(e) => setNewRole(e.target.value)}
           >
-            <option value="admin">Админ</option>
-            <option value="super_admin">Супер-админ</option>
+            <option value="admin">Администратор</option>
+            <option value="super_admin">Владелец</option>
           </select>
         </div>
         {error && (
-          <div className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{error}</div>
+          <div className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">
+            {error}
+          </div>
         )}
         <button
           onClick={handleAdd}
           disabled={!newId.trim() || adding}
           className="w-full py-2.5 rounded-xl bg-gray-900 text-white font-semibold text-sm active:scale-95 transition-all disabled:opacity-50"
         >
-          {adding ? 'Добавление...' : '+ Добавить админа'}
+          {adding ? "Добавление..." : "+ Добавить сотрудника"}
         </button>
         <p className="text-xs text-gray-400">
-          Узнать Telegram ID: <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer" className="text-blue-500">@userinfobot</a>
+          Узнать Telegram ID:{" "}
+          <a
+            href="https://t.me/userinfobot"
+            target="_blank"
+            rel="noreferrer"
+            className="text-blue-500"
+          >
+            @userinfobot
+          </a>
         </p>
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400 animate-pulse">Загрузка...</div>
+        <div className="text-center py-12 text-gray-400 animate-pulse">
+          Загрузка...
+        </div>
       ) : admins.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
           <p className="text-gray-400">Админов пока нет</p>
@@ -112,12 +128,14 @@ export function AdminsAdmin() {
                     {admin.telegram_id}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      admin.role === 'super_admin'
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {admin.role === 'super_admin' ? 'Супер-админ' : 'Админ'}
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        admin.role === "super_admin"
+                          ? "bg-purple-100 text-purple-700"
+                          : "bg-blue-100 text-blue-700"
+                      }`}
+                    >
+                      {admin.role === "super_admin" ? "Супер-админ" : "Админ"}
                     </span>
                     <span className="text-xs text-gray-400">
                       с {formatDate(new Date(admin.created_at).getTime())}

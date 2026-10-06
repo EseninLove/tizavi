@@ -1,118 +1,116 @@
-import { useState } from 'react';
-import { authApi } from './api';
-
-interface AdminLoginProps {
-  onLogin: () => void;
-}
-
-export function AdminLogin({ onLogin }: AdminLoginProps) {
-  const [adminKey, setAdminKey] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleKeyLogin = async () => {
-    if (!adminKey.trim() || loading) return;
-    setLoading(true);
-    setError('');
-
+import { useState } from "react";
+import { authApi } from "./api";
+import { AdminIcon, AdminNotice } from "./AdminUI";
+export function AdminLogin({ onLogin }: { onLogin: () => void }) {
+  const [key, setKey] = useState(""),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false),
+    [diagnostic, setDiagnostic] = useState<{
+      ok: boolean;
+      text: string;
+    } | null>(null),
+    [checking, setChecking] = useState(false);
+  const login = async () => {
+    if (!key.trim() || busy) return;
+    setBusy(true);
+    setError("");
     try {
-      const data = await authApi.loginWithKey(adminKey.trim());
-      if (data.ok) {
-        onLogin();
-      } else {
-        setError(data.error || 'Неизвестная ошибка');
-      }
-    } catch (err) {
-      setError(`Ошибка: ${err instanceof Error ? err.message : String(err)}`);
+      const d = await authApi.loginWithKey(key.trim());
+      if (d.ok) onLogin();
+      else setError(d.error || "Не удалось войти");
+    } catch {
+      setError("Нет соединения с сервером. Попробуйте ещё раз.");
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
-
-  const testApi = async () => {
-    setError('');
+  const check = async () => {
+    setChecking(true);
+    setDiagnostic(null);
     try {
-      const res = await fetch('/api/categories');
-      const text = await res.text();
-      setError(`Тест API [${res.status}]: ${text.slice(0, 200)}`);
-    } catch (err) {
-      setError(`API недоступен: ${err instanceof Error ? err.message : String(err)}`);
+      const r = await fetch("/api/categories"),
+        d = await r.json();
+      setDiagnostic({
+        ok: r.ok && d.ok,
+        text:
+          r.ok && d.ok
+            ? "Соединение с магазином работает. Это проверка связи, для входа нужен ключ."
+            : "Не удалось проверить соединение. Повторите позже.",
+      });
+    } catch {
+      setDiagnostic({ ok: false, text: "Нет соединения с магазином." });
+    } finally {
+      setChecking(false);
     }
   };
-
-  const testDb = async () => {
-    setError('');
-    try {
-      const res = await fetch('/api/categories');
-      const data = await res.json();
-      setError(
-        `Тест [${res.status}]: API — ${data.ok ? 'ок' : 'ошибка'}, категорий — ${
-          Array.isArray(data.categories) ? data.categories.length : 'нет данных'
-        } (0 может означать, что БД не инициализирована)`
-      );
-    } catch (err) {
-      setError(`API недоступен: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🛒</div>
-          <h1 className="text-2xl font-bold text-gray-900">Tizavi Admin</h1>
-          <p className="text-sm text-gray-500 mt-1">Панель управления магазином</p>
+    <div className="admin-login">
+      <section className="admin-login-panel">
+        <div className="admin-stat-icon mb-5">
+          <AdminIcon name="shield" />
         </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Ключ администратора
-            </label>
-            <input
-              type="password"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
-              placeholder="Введите ключ..."
-              value={adminKey}
-              onChange={(e) => setAdminKey(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleKeyLogin()}
-              autoFocus
-            />
-          </div>
-
+        <h1>Tizavi</h1>
+        <p className="mb-7 mt-1">Вход в управление магазином</p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void login();
+          }}
+        >
+          <label htmlFor="admin-key">Ключ администратора</label>
+          <input
+            id="admin-key"
+            type="password"
+            autoComplete="current-password"
+            className="admin-input"
+            value={key}
+            onChange={(e) => {
+              setKey(e.target.value);
+              setError("");
+            }}
+            placeholder="Введите ваш ключ"
+            required
+          />
           {error && (
-            <div className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2 max-h-32 overflow-y-auto break-all">
-              {error}
+            <div className="mt-4">
+              <AdminNotice>{error}</AdminNotice>
+              <p>
+                Если ключ изменён в Vercel, сохраните его для Production и
+                опубликуйте последнюю версию.
+              </p>
             </div>
           )}
-
           <button
-            onClick={handleKeyLogin}
-            disabled={!adminKey.trim() || loading}
-            className="w-full bg-gray-900 text-white font-semibold py-3 rounded-xl hover:bg-gray-800 active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100"
+            className="admin-primary"
+            type="submit"
+            disabled={busy || !key.trim()}
           >
-            {loading ? 'Проверка...' : 'Войти'}
+            {busy ? "Проверяем…" : "Войти в админку"}
+            <AdminIcon name="chevron" />
           </button>
-
+        </form>
+        <details className="admin-login-diagnostics">
+          <summary>Не получается войти?</summary>
+          <p className="my-3">
+            Проверьте ключ и раскладку клавиатуры. Соединение можно проверить
+            отдельно.
+          </p>
           <button
-            onClick={testApi}
-            className="w-full text-sm text-gray-400 hover:text-gray-600 underline"
+            className="admin-button"
+            disabled={checking}
+            onClick={() => void check()}
           >
-            Проверить соединение с API
+            {checking ? "Проверяем…" : "Проверить соединение"}
           </button>
-
-          <button
-            onClick={testDb}
-            className="w-full text-sm text-gray-400 hover:text-gray-600 underline"
-          >
-            Проверить соединение с БД
-          </button>
-        </div>
-
-        <p className="text-center text-xs text-gray-400 mt-6">
-          Ключ задаётся в переменной окружения <code className="text-gray-500">ADMIN_KEY</code>
-        </p>
-      </div>
+          {diagnostic && (
+            <div className="mt-3">
+              <AdminNotice tone={diagnostic.ok ? "success" : "error"}>
+                {diagnostic.text}
+              </AdminNotice>
+            </div>
+          )}
+        </details>
+      </section>
     </div>
   );
 }

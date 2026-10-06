@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { Routes, Route, NavLink, useLocation } from "react-router-dom";
-import { authApi } from "./api";
+import { useCallback, useEffect, useState } from "react";
+import { Routes, Route, NavLink, useLocation, Link } from "react-router-dom";
+import { authApi, apiFetch } from "./api";
 import { AdminLogin } from "./AdminLogin";
 import { Dashboard } from "./Dashboard";
 import { ProductsAdmin } from "./ProductsAdmin";
@@ -13,117 +13,197 @@ import { PaymentsAdmin } from "./PaymentsAdmin";
 import { DeliveryAdmin } from "./DeliveryAdmin";
 import { ReviewsAdmin } from "./ReviewsAdmin";
 import { Settings } from "./Settings";
+import { AdminIcon } from "./AdminUI";
+import "./admin.css";
 
-const navItems = [
-  { path: "/admin/payments", label: "Оплата", icon: "♦", end: false },
-  { path: "/admin/delivery", label: "Доставка", icon: "→", end: false },
-  { path: "/admin/reviews", label: "Отзывы", icon: "★", end: false },
-  { path: "/admin", label: "Дашборд", icon: "📊", end: true },
-  { path: "/admin/products", label: "Товары", icon: "📦", end: false },
-  { path: "/admin/categories", label: "Категории", icon: "🏷️", end: false },
-  { path: "/admin/orders", label: "Заказы", icon: "🛒", end: false },
-  { path: "/admin/users", label: "Пользователи", icon: "👥", end: false },
-  { path: "/admin/support", label: "Поддержка", icon: "🎧", end: false },
-  { path: "/admin/admins", label: "Администраторы", icon: "🛡️", end: false },
-  { path: "/admin/settings", label: "Настройки", icon: "⚙️", end: false },
+const groups = [
+  {
+    label: "Работа",
+    items: [
+      { path: "/admin", label: "Обзор", icon: "home" },
+      {
+        path: "/admin/orders",
+        label: "Заказы",
+        icon: "orders",
+        badge: "orders",
+      },
+      { path: "/admin/users", label: "Покупатели", icon: "users" },
+      {
+        path: "/admin/support",
+        label: "Поддержка",
+        icon: "support",
+        badge: "support",
+      },
+    ],
+  },
+  {
+    label: "Каталог",
+    items: [
+      { path: "/admin/products", label: "Товары", icon: "products" },
+      { path: "/admin/categories", label: "Категории", icon: "categories" },
+      {
+        path: "/admin/reviews",
+        label: "Отзывы",
+        icon: "reviews",
+        badge: "reviews",
+      },
+    ],
+  },
+  {
+    label: "Настройки",
+    items: [
+      {
+        path: "/admin/payments",
+        label: "Оплата",
+        icon: "payments",
+        owner: true,
+      },
+      { path: "/admin/delivery", label: "Доставка", icon: "delivery" },
+      {
+        path: "/admin/admins",
+        label: "Сотрудники",
+        icon: "shield",
+        owner: true,
+      },
+      { path: "/admin/settings", label: "Настройки", icon: "settings" },
+    ],
+  },
 ];
-
 export function AdminApp() {
-  const [authed, setAuthed] = useState(authApi.isAuthed());
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [authed, setAuthed] = useState(authApi.isAuthed()),
+    [menu, setMenu] = useState(false),
+    [counts, setCounts] = useState<Record<string, number>>({});
   const location = useLocation();
-
+  const owner = authApi.role() === "super_admin";
+  const logout = useCallback(() => {
+    authApi.logout();
+    setAuthed(false);
+    setMenu(false);
+  }, []);
   useEffect(() => {
-    setMobileNavOpen(false);
-  }, [location.pathname]);
-
-  if (!authed) {
-    return <AdminLogin onLogin={() => setAuthed(true)} />;
-  }
-
+    const handler = () => setAuthed(false);
+    window.addEventListener("tizavi-admin-expired", handler);
+    return () => window.removeEventListener("tizavi-admin-expired", handler);
+  }, []);
+  useEffect(() => {
+    setMenu(false);
+    if (authed)
+      apiFetch("/api/dashboard")
+        .then((d) => {
+          if (d.ok)
+            setCounts(
+              d.attention || {
+                orders: Number(d.stats?.statusCounts?.paid || 0),
+              },
+            );
+        })
+        .catch(() => {});
+  }, [location.pathname, authed]);
+  useEffect(() => {
+    if (!menu) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const fn = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenu(false);
+    };
+    window.addEventListener("keydown", fn);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", fn);
+    };
+  }, [menu]);
+  if (!authed)
+    return (
+      <div className="admin-root">
+        <AdminLogin onLogin={() => setAuthed(true)} />
+      </div>
+    );
+  const current = groups
+    .flatMap((g) => g.items)
+    .find((i) => i.path === location.pathname);
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar — desktop */}
-      <aside className="hidden md:flex flex-col w-60 bg-gray-900 text-white shrink-0 sticky top-0 h-screen">
-        <div className="px-5 py-5 border-b border-white/10">
-          <div className="text-lg font-bold">🛒 Tizavi</div>
-          <div className="text-xs text-white/50">Admin Panel</div>
-        </div>
-        <nav className="flex-1 py-3">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.end}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-white/10 text-white"
-                    : "text-white/60 hover:text-white hover:bg-white/5"
-                }`
-              }
+    <div className="admin-root">
+      <div className="admin-mobile-header">
+        <strong>Tizavi</strong>
+        <button
+          className="admin-icon-button"
+          aria-label="Открыть меню администратора"
+          aria-expanded={menu}
+          onClick={() => setMenu(true)}
+        >
+          <AdminIcon name="menu" />
+        </button>
+      </div>
+      {menu && (
+        <button
+          className="admin-nav-overlay"
+          onClick={() => setMenu(false)}
+          aria-label="Закрыть меню"
+        />
+      )}
+      <aside
+        className={`admin-sidebar ${menu ? "open" : ""}`}
+        aria-label="Навигация администратора"
+      >
+        <div className="admin-brand">
+          <strong>Tizavi</strong>
+          <span>Управление магазином</span>
+          {menu && (
+            <button
+              onClick={() => setMenu(false)}
+              className="admin-icon-button absolute right-2 top-4"
+              aria-label="Закрыть навигацию"
             >
-              <span className="text-lg">{item.icon}</span>
-              {item.label}
-            </NavLink>
+              <AdminIcon name="close" />
+            </button>
+          )}
+        </div>
+        <nav>
+          {groups.map((g) => (
+            <div key={g.label}>
+              <div className="admin-nav-group">{g.label}</div>
+              {g.items
+                .filter((i) => !("owner" in i && i.owner && !owner))
+                .map((i) => (
+                  <NavLink
+                    key={i.path}
+                    to={i.path}
+                    end={i.path === "/admin"}
+                    className={({ isActive }) =>
+                      `admin-nav-link ${isActive ? "active" : ""}`
+                    }
+                  >
+                    <AdminIcon name={i.icon} />
+                    {i.label}
+                    {"badge" in i && Number(counts[String(i.badge)]) > 0 && (
+                      <span className="admin-nav-count">
+                        {counts[String(i.badge)]}
+                      </span>
+                    )}
+                  </NavLink>
+                ))}
+            </div>
           ))}
         </nav>
-        <div className="p-3 border-t border-white/10">
-          <button
-            onClick={() => {
-              authApi.logout();
-              setAuthed(false);
-            }}
-            className="w-full text-left px-3 py-2 text-sm text-white/50 hover:text-white transition-colors"
-          >
-            ← Выйти
+        <div className="admin-sidebar-footer">
+          <Link to="/">
+            <AdminIcon name="external" />
+            Открыть магазин
+          </Link>
+          <button onClick={logout}>
+            <AdminIcon name="logout" />
+            {owner ? "Владелец" : "Администратор"} · Выйти
           </button>
         </div>
       </aside>
-
-      {/* Mobile nav header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-gray-900 text-white">
-        <div className="flex items-center justify-between px-4 py-3">
-          <span className="font-bold">🛒 Tizavi Admin</span>
-          <button
-            onClick={() => setMobileNavOpen((v) => !v)}
-            className="text-2xl"
-          >
-            {mobileNavOpen ? "×" : "☰"}
-          </button>
+      <main className="admin-main">
+        <div className="admin-topbar">
+          <span>Управление / {current?.label || "Обзор"}</span>
+          <Link to="/">
+            <AdminIcon name="external" className="w-3 h-3" />
+            Открыть магазин
+          </Link>
         </div>
-        {mobileNavOpen && (
-          <nav className="py-2 border-t border-white/10">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                end={item.end}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-5 py-3 text-sm font-medium transition-colors ${
-                    isActive ? "bg-white/10 text-white" : "text-white/60"
-                  }`
-                }
-              >
-                <span className="text-lg">{item.icon}</span>
-                {item.label}
-              </NavLink>
-            ))}
-            <button
-              onClick={() => {
-                authApi.logout();
-                setAuthed(false);
-              }}
-              className="w-full text-left px-5 py-3 text-sm text-white/50"
-            >
-              ← Выйти
-            </button>
-          </nav>
-        )}
-      </div>
-
-      {/* Main content */}
-      <main className="flex-1 min-w-0 p-4 md:p-8 pt-16 md:pt-8 overflow-x-hidden">
         <Routes>
           <Route index element={<Dashboard />} />
           <Route path="products" element={<ProductsAdmin />} />
@@ -138,6 +218,22 @@ export function AdminApp() {
           <Route path="settings" element={<Settings />} />
         </Routes>
       </main>
+      <nav className="admin-mobile-shortcuts" aria-label="Быстрые разделы">
+        {[
+          { path: "orders", label: "Заказы", icon: "orders" },
+          { path: "products", label: "Товары", icon: "products" },
+          { path: "support", label: "Поддержка", icon: "support" },
+        ].map((i) => (
+          <NavLink
+            key={i.path}
+            to={`/admin/${i.path}`}
+            className={({ isActive }) => (isActive ? "active" : "")}
+          >
+            <AdminIcon name={i.icon} />
+            {i.label}
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }
