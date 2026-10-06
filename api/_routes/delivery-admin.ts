@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { authenticateAdmin } from "./_helpers.js";
-import { sql } from "./_db.js";
-import { ensureCommerceSchema } from "./_schema.js";
-import { ShopError, positiveInteger } from "./_commerce.js";
+import { authenticateAdmin } from "../_helpers.js";
+import { sql } from "../_db.js";
+import { ensureCommerceSchema } from "../_schema.js";
+import { ShopError, positiveInteger } from "../_commerce.js";
 function number(v: unknown, min: number, max: number) {
   const n = Number(v);
   if (!Number.isFinite(n) || n < min || n > max)
@@ -63,14 +63,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       geocodingConfigured: !!process.env.DADATA_TOKEN,
     });
   } catch (error) {
-    return res
-      .status(error instanceof ShopError ? error.status : 503)
-      .json({
-        ok: false,
-        error:
-          error instanceof ShopError
-            ? error.message
-            : "Не удалось сохранить настройки доставки",
-      });
+    return res.status(error instanceof ShopError ? error.status : 503).json({
+      ok: false,
+      error:
+        error instanceof ShopError
+          ? error.message
+          : "Не удалось сохранить настройки доставки",
+    });
   }
 }

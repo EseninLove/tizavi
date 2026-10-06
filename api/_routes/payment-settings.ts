@@ -1,14 +1,15 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { authenticateAdmin } from "./_helpers.js";
-import { sql } from "./_db.js";
-import { ensureCommerceSchema } from "./_schema.js";
+import { authenticateAdmin } from "../_helpers.js";
+import { sql } from "../_db.js";
+import { ensureCommerceSchema } from "../_schema.js";
 import {
   PROVIDERS,
   ProviderName,
   paymentConfiguration,
   encryptCredentials,
-} from "./_payment-config.js";
-import { ShopError } from "./_commerce.js";
+  canStoreCredentials,
+} from "../_payment-config.js";
+import { ShopError } from "../_commerce.js";
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const auth = await authenticateAdmin(req);
   if (!auth.authorized || auth.user?.role !== "super_admin")
@@ -66,9 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       activeProvider: current.name,
       publicUrl: current.publicUrl,
       allowTest: current.allowTest,
-      canStoreCredentials: /^[a-f0-9]{64}$/i.test(
-        process.env.PAYMENT_SETTINGS_KEY || "",
-      ),
+      canStoreCredentials: canStoreCredentials(),
       providers,
     });
   } catch (error) {

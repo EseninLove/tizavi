@@ -1,21 +1,21 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import crypto from "node:crypto";
-import { sql, pool } from "../_db.js";
+import { sql, pool } from "../../_db.js";
 import {
   authenticateAdmin,
   validateInitData,
   upsertUser,
-} from "../_helpers.js";
-import { hasActiveSubscription } from "../_subscription.js";
-import { ensureCommerceSchema } from "../_schema.js";
+} from "../../_helpers.js";
+import { hasActiveSubscription } from "../../_subscription.js";
+import { ensureCommerceSchema } from "../../_schema.js";
 import {
   calculateItems,
   canFulfil,
   mapOrder,
   positiveInteger,
   ShopError,
-} from "../_commerce.js";
-import { quoteAddress } from "../_delivery.js";
+} from "../../_commerce.js";
+import { quoteAddress } from "../../_delivery.js";
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === "POST") {
@@ -26,13 +26,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .status(401)
           .json({ ok: false, error: "Откройте магазин в Telegram" });
       if (!(await hasActiveSubscription(userId)))
-        return res
-          .status(403)
-          .json({
-            ok: false,
-            error: "Для заказа нужна активная подписка",
-            code: "SUBSCRIPTION_REQUIRED",
-          });
+        return res.status(403).json({
+          ok: false,
+          error: "Для заказа нужна активная подписка",
+          code: "SUBSCRIPTION_REQUIRED",
+        });
       if (!/^[a-zA-Z0-9-]{8,100}$/.test(requestKey || ""))
         throw new ShopError("Некорректный запрос");
       if (
@@ -148,14 +146,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     return res.status(405).json({ ok: false });
   } catch (error) {
-    return res
-      .status(error instanceof ShopError ? error.status : 503)
-      .json({
-        ok: false,
-        error:
-          error instanceof ShopError
-            ? error.message
-            : "Не удалось сохранить заказ. Корзина сохранена.",
-      });
+    return res.status(error instanceof ShopError ? error.status : 503).json({
+      ok: false,
+      error:
+        error instanceof ShopError
+          ? error.message
+          : "Не удалось сохранить заказ. Корзина сохранена.",
+    });
   }
 }

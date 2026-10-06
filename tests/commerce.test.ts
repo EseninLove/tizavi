@@ -6,7 +6,7 @@ import { calculateItems, paymentMatches, canFulfil } from "../api/_commerce";
 import { deliveryEstimate } from "../api/_delivery";
 import { matchesProduct } from "../src/utils/search";
 import { tbankToken } from "../api/_payment-provider";
-import { encryptCredentials } from "../api/_payment-config";
+import { encryptCredentials, decryptCredentials } from "../api/_payment-config";
 import { formatPrice } from "../src/utils/format";
 
 test("provider signatures exclude nested data and stored secrets are encrypted with fresh nonces", () => {
@@ -27,16 +27,33 @@ test("provider signatures exclude nested data and stored secrets are encrypted w
       .digest("hex"),
   );
   const previous = process.env.PAYMENT_SETTINGS_KEY;
+  const previousBot = process.env.BOT_TOKEN;
   process.env.PAYMENT_SETTINGS_KEY = "ab".repeat(32);
   try {
     const first = encryptCredentials({ secretKey: "private-secret" });
     const second = encryptCredentials({ secretKey: "private-secret" });
     assert.notEqual(first, second);
     assert.equal(first.includes("private-secret"), false);
+    assert.deepEqual(decryptCredentials(first), {
+      secretKey: "private-secret",
+    });
+    const tampered = first.split(".");
+    tampered[2] = Buffer.alloc(16).toString("base64");
+    assert.throws(() => decryptCredentials(tampered.join(".")));
+    delete process.env.PAYMENT_SETTINGS_KEY;
+    process.env.BOT_TOKEN = "123456:" + "a".repeat(40);
+    const botProtected = encryptCredentials({ secretKey: "bot-protected" });
+    assert.equal(botProtected.startsWith("bot."), true);
+    process.env.PAYMENT_SETTINGS_KEY = "cd".repeat(32);
+    assert.deepEqual(decryptCredentials(botProtected), {
+      secretKey: "bot-protected",
+    });
     assert.match(formatPrice(94.5), /94,5/);
   } finally {
     if (previous === undefined) delete process.env.PAYMENT_SETTINGS_KEY;
     else process.env.PAYMENT_SETTINGS_KEY = previous;
+    if (previousBot === undefined) delete process.env.BOT_TOKEN;
+    else process.env.BOT_TOKEN = previousBot;
   }
 });
 
@@ -293,17 +310,30 @@ test("database and API payment lifecycle rejects forged activation and applies r
     return data.toString();
   }
   try {
-    const seed = (await import("../api/seed")).default,
-      subscription = (await import("../api/subscription")).default,
-      orders = (await import("../api/orders/index")).default,
-      myOrders = (await import("../api/my-orders")).default,
-      categories = (await import("../api/categories/index")).default,
-      reviews = (await import("../api/reviews")).default,
-      products = (await import("../api/products/index")).default;
+    const seed = (await import("../api/_routes/seed")).default,
+      subscription = (await import("../api/_routes/subscription")).default,
+      orders = (await import("../api/_routes/orders/index")).default,
+      myOrders = (await import("../api/_routes/my-orders")).default,
+      categories = (await import("../api/_routes/categories/index")).default,
+      reviews = (await import("../api/_routes/reviews")).default,
+      products = (await import("../api/_routes/products/index")).default;
     const { createPayment, reconcilePayment } =
       await import("../api/_payments");
     const seeded = await call(seed, "POST", {}, {}, true);
     assert.equal(seeded.status, 200, JSON.stringify(seeded.body));
+    const router = (await import("../api/index")).default;
+    assert.equal(
+      (await call(router, "GET", {}, { route: "categories" })).status,
+      200,
+    );
+    assert.equal(
+      (await call(router, "GET", {}, { route: "unknown" })).status,
+      404,
+    );
+    assert.equal(
+      (await call(router, "GET", {}, { route: "payment-settings" })).status,
+      403,
+    );
     assert.equal(
       (
         await call(subscription, "POST", {

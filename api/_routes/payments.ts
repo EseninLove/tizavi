@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { validateInitData } from "./_helpers.js";
+import { validateInitData } from "../_helpers.js";
 import {
   createPayment,
   paymentsConfigured,
   reconcilePayment,
-} from "./_payments.js";
-import { ShopError } from "./_commerce.js";
+} from "../_payments.js";
+import { ShopError } from "../_commerce.js";
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "GET")
     return res.json({ ok: true, configured: await paymentsConfigured() });
@@ -24,14 +24,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : await createPayment(auth.userId, kind, requestKey, orderNumber);
     return res.json({ ok: true, ...data });
   } catch (error) {
-    return res
-      .status(error instanceof ShopError ? error.status : 503)
-      .json({
-        ok: false,
-        error:
-          error instanceof ShopError
-            ? error.message
-            : "Не удалось обработать оплату. Повторите попытку.",
-      });
+    return res.status(error instanceof ShopError ? error.status : 503).json({
+      ok: false,
+      error:
+        error instanceof ShopError
+          ? error.message
+          : "Не удалось обработать оплату. Повторите попытку.",
+    });
   }
 }

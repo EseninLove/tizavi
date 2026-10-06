@@ -1,6 +1,11 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { sql, authenticateAdmin, sendJSON, unauthorized } from "../_helpers.js";
-import { ensureCommerceSchema } from "../_schema.js";
+import {
+  sql,
+  authenticateAdmin,
+  sendJSON,
+  unauthorized,
+} from "../../_helpers.js";
+import { ensureCommerceSchema } from "../../_schema.js";
 import crypto from "node:crypto";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

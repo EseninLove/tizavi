@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { sql } from "./_db.js";
-import { ensureCommerceSchema } from "./_schema.js";
-import { reconcilePayment } from "./_payments.js";
+import { sql } from "../_db.js";
+import { ensureCommerceSchema } from "../_schema.js";
+import { reconcilePayment } from "../_payments.js";
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).end();
   const { event, object, PaymentId } = req.body || {};

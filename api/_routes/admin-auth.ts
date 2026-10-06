@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { validateInitData } from "./_helpers.js";
+import { validateInitData } from "../_helpers.js";
 
 const ADMIN_KEY = process.env.ADMIN_KEY || "";
 
@@ -37,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let isAdmin = false;
     let role = "admin";
     try {
-      const { sql } = await import("./_db.js");
+      const { sql } = await import("../_db.js");
       const result =
         await sql`SELECT role FROM admins WHERE telegram_id = ${userId}`;
       isAdmin = (result.rowCount ?? 0) > 0;

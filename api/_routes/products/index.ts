@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { sql } from "../_db.js";
-import { authenticateAdmin } from "../_helpers.js";
-import { ensureCommerceSchema } from "../_schema.js";
-import { positiveInteger, ShopError } from "../_commerce.js";
+import { sql } from "../../_db.js";
+import { authenticateAdmin } from "../../_helpers.js";
+import { ensureCommerceSchema } from "../../_schema.js";
+import { positiveInteger, ShopError } from "../../_commerce.js";
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     await ensureCommerceSchema();
@@ -68,14 +68,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await sql`UPDATE products SET name=${b.name.trim()},description=${String(b.description || "")},price=${price},old_price=${old},image=${String(b.image || "")},category=${b.category},rating=${rating},reviews_count=${reviews},in_stock=${b.in_stock !== false},badge=${b.badge || null},unit=${b.unit},weight=${weight},brand=${String(b.brand || "")},synonyms=${String(b.synonyms || "")},seasonal=${b.seasonal === true},popular=${b.popular === true},package_label=${String(b.package_label || "")},updated_at=NOW() WHERE id=${positiveInteger(req.query.id)}`;
     return res.json({ ok: true });
   } catch (error) {
-    return res
-      .status(error instanceof ShopError ? error.status : 503)
-      .json({
-        ok: false,
-        error:
-          error instanceof ShopError
-            ? error.message
-            : "Не удалось обработать товары",
-      });
+    return res.status(error instanceof ShopError ? error.status : 503).json({
+      ok: false,
+      error:
+        error instanceof ShopError
+          ? error.message
+          : "Не удалось обработать товары",
+    });
   }
 }

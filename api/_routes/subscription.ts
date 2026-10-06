@@ -1,23 +1,20 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { validateInitData, upsertUser } from "./_helpers.js";
+import { validateInitData, upsertUser } from "../_helpers.js";
 import {
   getSubscription,
   SUBSCRIPTION_DAYS,
   SUBSCRIPTION_PRICE_RUB,
-} from "./_subscription.js";
-import { createPayment, paymentsConfigured } from "./_payments.js";
-import { ShopError } from "./_commerce.js";
+} from "../_subscription.js";
+import { createPayment, paymentsConfigured } from "../_payments.js";
+import { ShopError } from "../_commerce.js";
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ ok: false });
   const { initData, action, requestKey } = req.body || {};
   if (action === "activate")
-    return res
-      .status(403)
-      .json({
-        ok: false,
-        error:
-          "Подписка активируется только после подтверждения оплаты сервисом",
-      });
+    return res.status(403).json({
+      ok: false,
+      error: "Подписка активируется только после подтверждения оплаты сервисом",
+    });
   const { valid, userId } = validateInitData(initData || "");
   if (!valid || !userId)
     return res
@@ -38,14 +35,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       paymentsConfigured: await paymentsConfigured(),
     });
   } catch (error) {
-    return res
-      .status(error instanceof ShopError ? error.status : 503)
-      .json({
-        ok: false,
-        error:
-          error instanceof ShopError
-            ? error.message
-            : "Не удалось проверить подписку",
-      });
+    return res.status(error instanceof ShopError ? error.status : 503).json({
+      ok: false,
+      error:
+        error instanceof ShopError
+          ? error.message
+          : "Не удалось проверить подписку",
+    });
   }
 }

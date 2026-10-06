@@ -15,7 +15,20 @@ export const PROVIDERS = {
   },
 };
 export type ProviderName = keyof typeof PROVIDERS;
-function key() {
+function key(
+  source: string = process.env.PAYMENT_SETTINGS_KEY ? "master" : "bot",
+) {
+  if (source === "bot") {
+    const token = process.env.BOT_TOKEN || "";
+    if (!/^\d+:[A-Za-z0-9_-]{30,}$/.test(token))
+      throw new ShopError("Настройте защиту ключей на сервере", 503);
+    return crypto
+      .createHmac("sha256", token)
+      .update("tizavi/payment-credentials/v1")
+      .digest();
+  }
+  if (source !== "master")
+    throw new ShopError("Неизвестный формат защиты ключей", 503);
   const value = process.env.PAYMENT_SETTINGS_KEY || "";
   if (!/^[a-f0-9]{64}$/i.test(value))
     throw new ShopError(
@@ -24,22 +37,35 @@ function key() {
     );
   return Buffer.from(value, "hex");
 }
+export function canStoreCredentials() {
+  try {
+    key();
+    return true;
+  } catch {
+    return false;
+  }
+}
 export function encryptCredentials(data: Record<string, string>) {
+  const source = process.env.PAYMENT_SETTINGS_KEY ? "master" : "bot";
   const iv = crypto.randomBytes(12),
-    cipher = crypto.createCipheriv("aes-256-gcm", key(), iv);
+    cipher = crypto.createCipheriv("aes-256-gcm", key(source), iv);
   const content = Buffer.concat([
     cipher.update(JSON.stringify(data), "utf8"),
     cipher.final(),
   ]);
-  return [iv, cipher.getAuthTag(), content]
-    .map((b) => b.toString("base64"))
-    .join(".");
+  return (
+    source +
+    "." +
+    [iv, cipher.getAuthTag(), content]
+      .map((b) => b.toString("base64"))
+      .join(".")
+  );
 }
-function decryptCredentials(value: string) {
-  const [iv, tag, content] = value
-    .split(".")
-    .map((v) => Buffer.from(v, "base64"));
-  const cipher = crypto.createDecipheriv("aes-256-gcm", key(), iv);
+export function decryptCredentials(value: string) {
+  const parts = value.split(".");
+  const source = parts.length === 4 ? parts.shift()! : "master";
+  const [iv, tag, content] = parts.map((v) => Buffer.from(v, "base64"));
+  const cipher = crypto.createDecipheriv("aes-256-gcm", key(source), iv);
   cipher.setAuthTag(tag);
   return JSON.parse(
     Buffer.concat([cipher.update(content), cipher.final()]).toString("utf8"),

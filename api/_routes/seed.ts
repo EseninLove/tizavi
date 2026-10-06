@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { authenticateAdmin, sendJSON, unauthorized } from "./_helpers.js";
-import { sql } from "./_db.js";
-import { seedProducts } from "./_seed-data.js";
-import { ensureCommerceSchema } from "./_schema.js";
+import { authenticateAdmin, sendJSON, unauthorized } from "../_helpers.js";
+import { sql } from "../_db.js";
+import { seedProducts } from "../_seed-data.js";
+import { ensureCommerceSchema } from "../_schema.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {

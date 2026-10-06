@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { sql, validateInitData, authenticateAdmin } from "./_helpers.js";
-import { ensureCommerceSchema } from "./_schema.js";
-import { positiveInteger, ShopError } from "./_commerce.js";
+import { sql, validateInitData, authenticateAdmin } from "../_helpers.js";
+import { ensureCommerceSchema } from "../_schema.js";
+import { positiveInteger, ShopError } from "../_commerce.js";
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     await ensureCommerceSchema();
@@ -46,14 +46,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await sql`INSERT INTO product_reviews(product_id,telegram_id,rating,message) VALUES(${productId},${userId},${rating},${message}) ON CONFLICT(product_id,telegram_id) DO UPDATE SET rating=EXCLUDED.rating,message=EXCLUDED.message,visible=FALSE,created_at=NOW()`;
     return res.json({ ok: true });
   } catch (error) {
-    return res
-      .status(error instanceof ShopError ? error.status : 503)
-      .json({
-        ok: false,
-        error:
-          error instanceof ShopError
-            ? error.message
-            : "Не удалось обработать отзывы",
-      });
+    return res.status(error instanceof ShopError ? error.status : 503).json({
+      ok: false,
+      error:
+        error instanceof ShopError
+          ? error.message
+          : "Не удалось обработать отзывы",
+    });
   }
 }
