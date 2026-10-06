@@ -25,8 +25,9 @@
     @apply text-tg-text;
     background: var(--app-bg);
     background-attachment: fixed;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-      sans-serif;
+    font-family:
+      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+      Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
   }
@@ -60,8 +61,8 @@
   }
 
   .btn-primary {
-  @apply btn bg-tg-button text-tg-button-text;
-}
+    @apply btn bg-tg-button text-tg-button-text;
+  }
 
   .btn-secondary {
     @apply btn bg-tg-secondary-bg text-tg-text;
@@ -78,8 +79,8 @@
   }
 
   .chip-active {
-  @apply bg-tg-button text-tg-button-text;
-}
+    @apply bg-tg-button text-tg-button-text;
+  }
 
   .chip-inactive {
     @apply bg-tg-section-bg text-tg-text;
@@ -111,4 +112,32 @@
 .admin-input:focus {
   border-color: transparent;
   box-shadow: 0 0 0 2px #16a34a;
+}
+.catalog-with-cart {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10rem);
+}
+.floating-cart {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);
+}
+.checkout-content {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8rem);
+}
+.safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+}
+@keyframes slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.animate-slide-in {
+  animation: slide-in 0.2s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-in {
+    animation: none;
+  }
 }

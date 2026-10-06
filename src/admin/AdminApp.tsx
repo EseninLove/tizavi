@@ -1,25 +1,31 @@
-import { useEffect, useState } from 'react';
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { authApi } from './api';
-import { AdminLogin } from './AdminLogin';
-import { Dashboard } from './Dashboard';
-import { ProductsAdmin } from './ProductsAdmin';
-import { OrdersAdmin } from './OrdersAdmin';
-import { UsersAdmin } from './UsersAdmin';
-import { AdminsAdmin } from './AdminsAdmin';
-import { CategoriesAdmin } from './CategoriesAdmin';
-import { SupportAdmin } from './SupportAdmin';
-import { Settings } from './Settings';
+import { useEffect, useState } from "react";
+import { Routes, Route, NavLink, useLocation } from "react-router-dom";
+import { authApi } from "./api";
+import { AdminLogin } from "./AdminLogin";
+import { Dashboard } from "./Dashboard";
+import { ProductsAdmin } from "./ProductsAdmin";
+import { OrdersAdmin } from "./OrdersAdmin";
+import { UsersAdmin } from "./UsersAdmin";
+import { AdminsAdmin } from "./AdminsAdmin";
+import { CategoriesAdmin } from "./CategoriesAdmin";
+import { SupportAdmin } from "./SupportAdmin";
+import { PaymentsAdmin } from "./PaymentsAdmin";
+import { DeliveryAdmin } from "./DeliveryAdmin";
+import { ReviewsAdmin } from "./ReviewsAdmin";
+import { Settings } from "./Settings";
 
 const navItems = [
-  { path: '/admin', label: 'Дашборд', icon: '📊', end: true },
-  { path: '/admin/products', label: 'Товары', icon: '📦', end: false },
-  { path: '/admin/categories', label: 'Категории', icon: '🏷️', end: false },
-  { path: '/admin/orders', label: 'Заказы', icon: '🛒', end: false },
-  { path: '/admin/users', label: 'Пользователи', icon: '👥', end: false },
-  { path: '/admin/support', label: 'Поддержка', icon: '🎧', end: false },
-  { path: '/admin/admins', label: 'Администраторы', icon: '🛡️', end: false },
-  { path: '/admin/settings', label: 'Настройки', icon: '⚙️', end: false },
+  { path: "/admin/payments", label: "Оплата", icon: "♦", end: false },
+  { path: "/admin/delivery", label: "Доставка", icon: "→", end: false },
+  { path: "/admin/reviews", label: "Отзывы", icon: "★", end: false },
+  { path: "/admin", label: "Дашборд", icon: "📊", end: true },
+  { path: "/admin/products", label: "Товары", icon: "📦", end: false },
+  { path: "/admin/categories", label: "Категории", icon: "🏷️", end: false },
+  { path: "/admin/orders", label: "Заказы", icon: "🛒", end: false },
+  { path: "/admin/users", label: "Пользователи", icon: "👥", end: false },
+  { path: "/admin/support", label: "Поддержка", icon: "🎧", end: false },
+  { path: "/admin/admins", label: "Администраторы", icon: "🛡️", end: false },
+  { path: "/admin/settings", label: "Настройки", icon: "⚙️", end: false },
 ];
 
 export function AdminApp() {
@@ -51,7 +57,9 @@ export function AdminApp() {
               end={item.end}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-colors ${
-                  isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'
+                  isActive
+                    ? "bg-white/10 text-white"
+                    : "text-white/60 hover:text-white hover:bg-white/5"
                 }`
               }
             >
@@ -77,8 +85,11 @@ export function AdminApp() {
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-gray-900 text-white">
         <div className="flex items-center justify-between px-4 py-3">
           <span className="font-bold">🛒 Tizavi Admin</span>
-          <button onClick={() => setMobileNavOpen((v) => !v)} className="text-2xl">
-            {mobileNavOpen ? '×' : '☰'}
+          <button
+            onClick={() => setMobileNavOpen((v) => !v)}
+            className="text-2xl"
+          >
+            {mobileNavOpen ? "×" : "☰"}
           </button>
         </div>
         {mobileNavOpen && (
@@ -90,7 +101,7 @@ export function AdminApp() {
                 end={item.end}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-5 py-3 text-sm font-medium transition-colors ${
-                    isActive ? 'bg-white/10 text-white' : 'text-white/60'
+                    isActive ? "bg-white/10 text-white" : "text-white/60"
                   }`
                 }
               >
@@ -121,6 +132,9 @@ export function AdminApp() {
           <Route path="users" element={<UsersAdmin />} />
           <Route path="support" element={<SupportAdmin />} />
           <Route path="admins" element={<AdminsAdmin />} />
+          <Route path="payments" element={<PaymentsAdmin />} />
+          <Route path="delivery" element={<DeliveryAdmin />} />
+          <Route path="reviews" element={<ReviewsAdmin />} />
           <Route path="settings" element={<Settings />} />
         </Routes>
       </main>

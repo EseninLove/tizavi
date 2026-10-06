@@ -1,5 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { Category, Product } from '../types';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import type { Category, Product } from "../types";
 
 interface ProductsContextValue {
   products: Product[];
@@ -11,7 +18,7 @@ interface ProductsContextValue {
 
 const ProductsContext = createContext<ProductsContextValue | null>(null);
 
-const DEFAULT_CATEGORIES: Category[] = [{ id: 'all', name: 'Все' }];
+const DEFAULT_CATEGORIES: Category[] = [{ id: "all", name: "Все" }];
 
 interface DbProductRow {
   id: number;
@@ -27,22 +34,40 @@ interface DbProductRow {
   badge: string | null;
   unit?: string;
   weight?: number | null;
+  effective_rating?: number;
+  actual_reviews_count?: number;
+  brand?: string;
+  synonyms?: string;
+  seasonal?: boolean;
+  popular?: boolean;
+  purchase_count?: number;
+  package_label?: string;
 }
 
 function mapProduct(row: DbProductRow): Product {
   return {
     id: String(row.id),
     name: row.name,
-    description: row.description || '',
+    description: row.description || "",
     price: Number(row.price),
     oldPrice: row.old_price ? Number(row.old_price) : undefined,
     image: row.image,
     category: row.category,
-    rating: Number(row.rating) || 5,
-    reviewsCount: Number(row.reviews_count) || 0,
+    rating: Number(row.effective_rating ?? row.rating) || 0,
+    reviewsCount:
+      (Number(row.reviews_count) || 0) +
+      (Number(row.actual_reviews_count) || 0),
+    actualReviewsCount: Number(row.actual_reviews_count) || 0,
+    adminRatingsCount: Number(row.reviews_count) || 0,
+    brand: row.brand,
+    synonyms: row.synonyms,
+    seasonal: row.seasonal,
+    popular: row.popular,
+    purchaseCount: Number(row.purchase_count) || 0,
+    packageLabel: row.package_label,
     inStock: row.in_stock !== false,
     badge: row.badge || undefined,
-    unit: (row.unit as Product['unit']) || 'шт',
+    unit: (row.unit as Product["unit"]) || "шт",
     weight: row.weight ? Number(row.weight) : undefined,
   };
 }
@@ -51,7 +76,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [reloadFlag, setReloadFlag] = useState(0);
 
   useEffect(() => {
@@ -59,11 +84,11 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
 
     async function load() {
       setLoading(true);
-      setError('');
+      setError("");
       try {
         const [productsRes, categoriesRes] = await Promise.all([
-          fetch('/api/products'),
-          fetch('/api/categories'),
+          fetch("/api/products"),
+          fetch("/api/categories"),
         ]);
 
         if (!cancelled) {
@@ -71,26 +96,33 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
           if (productsData.ok) {
             setProducts((productsData.products || []).map(mapProduct));
           } else {
-            setError('Не удалось загрузить товары');
+            setError("Не удалось загрузить товары");
           }
 
           try {
             const categoriesData = await categoriesRes.json();
             if (categoriesData.ok && Array.isArray(categoriesData.categories)) {
               const mapped: Category[] = categoriesData.categories.map(
-                (c: { slug: string; name: string }) => ({
+                (c: {
+                  slug: string;
+                  name: string;
+                  image?: string;
+                  icon?: string;
+                }) => ({
                   id: c.slug,
                   name: c.name,
-                })
+                  image: c.image,
+                  emoji: c.icon,
+                }),
               );
-              setCategories([{ id: 'all', name: 'Все' }, ...mapped]);
+              setCategories([{ id: "all", name: "Все" }, ...mapped]);
             }
           } catch {
             // категории недоступны — оставим дефолтные
           }
         }
       } catch {
-        if (!cancelled) setError('Ошибка соединения');
+        if (!cancelled) setError("Ошибка соединения");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -110,14 +142,18 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       error,
       reload: () => setReloadFlag((f) => f + 1),
     }),
-    [products, categories, loading, error]
+    [products, categories, loading, error],
   );
 
-  return <ProductsContext.Provider value={value}>{children}</ProductsContext.Provider>;
+  return (
+    <ProductsContext.Provider value={value}>
+      {children}
+    </ProductsContext.Provider>
+  );
 }
 
 export function useProducts(): ProductsContextValue {
   const ctx = useContext(ProductsContext);
-  if (!ctx) throw new Error('useProducts must be used within ProductsProvider');
+  if (!ctx) throw new Error("useProducts must be used within ProductsProvider");
   return ctx;
 }

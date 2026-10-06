@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
-import { categoriesApi, productsApi } from './api';
+import { useEffect, useState } from "react";
+import { categoriesApi, productsApi } from "./api";
 
 interface CategoryRow {
   id: number;
   slug: string;
   name: string;
   sort_order: number;
+  image?: string;
+  icon?: string;
 }
 
 interface ProductRow {
@@ -19,17 +21,22 @@ export function CategoriesAdmin() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<CategoryRow | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [name, setName] = useState('');
+  const [name, setName] = useState("");
+  const [image, setImage] = useState(""),
+    [icon, setIcon] = useState(""),
+    [order, setOrder] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const load = () => {
     setLoading(true);
-    Promise.all([categoriesApi.list(), productsApi.list()]).then(([catRes, prodRes]) => {
-      if (catRes.ok) setCategories(catRes.categories || []);
-      if (prodRes.ok) setProductList(prodRes.products || []);
-      setLoading(false);
-    });
+    Promise.all([categoriesApi.list(), productsApi.list()]).then(
+      ([catRes, prodRes]) => {
+        if (catRes.ok) setCategories(catRes.categories || []);
+        if (prodRes.ok) setProductList(prodRes.products || []);
+        setLoading(false);
+      },
+    );
   };
 
   useEffect(load, []);
@@ -38,13 +45,19 @@ export function CategoriesAdmin() {
     productList.filter((p) => p.category === slug).length;
 
   const openCreate = () => {
-    setName('');
+    setName("");
+    setImage("");
+    setIcon("");
+    setOrder(0);
     setEditing(null);
     setShowForm(true);
   };
 
   const openEdit = (c: CategoryRow) => {
     setName(c.name);
+    setImage(c.image || "");
+    setIcon(c.icon || "");
+    setOrder(c.sort_order);
     setEditing(c);
     setShowForm(true);
   };
@@ -52,23 +65,33 @@ export function CategoriesAdmin() {
   const handleSave = async () => {
     if (!name.trim() || saving) return;
     setSaving(true);
-    setError('');
+    setError("");
 
     try {
       let res;
       if (editing) {
-        res = await categoriesApi.update(editing.id, { name: name.trim() });
+        res = await categoriesApi.update(editing.id, {
+          name: name.trim(),
+          image,
+          icon,
+          sort_order: order,
+        });
       } else {
-        res = await categoriesApi.create({ name: name.trim() });
+        res = await categoriesApi.create({
+          name: name.trim(),
+          image,
+          icon,
+          sort_order: order,
+        });
       }
       if (res.ok) {
         setShowForm(false);
         load();
       } else {
-        setError(res.error || 'Ошибка сохранения');
+        setError(res.error || "Ошибка сохранения");
       }
     } catch {
-      setError('Ошибка соединения');
+      setError("Ошибка соединения");
     } finally {
       setSaving(false);
     }
@@ -76,19 +99,26 @@ export function CategoriesAdmin() {
 
   const handleDelete = async (c: CategoryRow) => {
     const count = countProducts(c.slug);
-    const msg = count > 0
-      ? `В категории «${c.name}» ${count} товаров. Удалить категорию? (товары останутся, но потеряют фильтр)`
-      : `Удалить категорию «${c.name}»?`;
+    if (count > 0) {
+      setError("Сначала перенесите товары в другую категорию");
+      return;
+    }
+    const msg =
+      count > 0
+        ? `В категории «${c.name}» ${count} товаров. Удалить категорию? (товары останутся, но потеряют фильтр)`
+        : `Удалить категорию «${c.name}»?`;
     if (!confirm(msg)) return;
     const res = await categoriesApi.remove(c.id);
     if (res.ok) load();
+    else setError(res.error);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">
-          Категории <span className="text-gray-400 text-lg">({categories.length})</span>
+          Категории{" "}
+          <span className="text-gray-400 text-lg">({categories.length})</span>
         </h1>
         <button
           onClick={openCreate}
@@ -98,8 +128,11 @@ export function CategoriesAdmin() {
         </button>
       </div>
 
+      {error && !showForm && <p className="text-sm text-red-600">{error}</p>}
       {loading ? (
-        <div className="text-center py-20 text-gray-400 animate-pulse">Загрузка...</div>
+        <div className="text-center py-20 text-gray-400 animate-pulse">
+          Загрузка...
+        </div>
       ) : categories.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
           <p className="text-gray-400 mb-2">Категорий пока нет</p>
@@ -113,7 +146,9 @@ export function CategoriesAdmin() {
             {categories.map((c) => (
               <div key={c.id} className="p-4 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-gray-900">{c.name}</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    {c.name}
+                  </div>
                   <div className="text-xs text-gray-400">
                     slug: {c.slug} · {countProducts(c.slug)} товаров
                   </div>
@@ -140,23 +175,31 @@ export function CategoriesAdmin() {
 
       {/* Modal form */}
       {showForm && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setShowForm(false)}>
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center p-0 md:p-4"
+          onClick={() => setShowForm(false)}
+        >
           <div
             className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-2xl p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-gray-900">
-                {editing ? 'Редактировать категорию' : 'Новая категория'}
+                {editing ? "Редактировать категорию" : "Новая категория"}
               </h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">
+              <button
+                onClick={() => setShowForm(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+              >
                 ×
               </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Название *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Название *
+                </label>
                 <input
                   className="admin-input"
                   placeholder="Например: Овощи и фрукты"
@@ -166,8 +209,37 @@ export function CategoriesAdmin() {
                 />
               </div>
 
+              <label className="block text-sm">
+                Фото категории
+                <input
+                  value={image}
+                  onChange={(e) => setImage(e.target.value)}
+                  className="admin-input mt-1"
+                  placeholder="https://…"
+                />
+              </label>
+              <label className="block text-sm">
+                Значок
+                <input
+                  value={icon}
+                  onChange={(e) => setIcon(e.target.value)}
+                  className="admin-input mt-1"
+                  maxLength={20}
+                />
+              </label>
+              <label className="block text-sm">
+                Порядок показа
+                <input
+                  type="number"
+                  value={order}
+                  onChange={(e) => setOrder(Number(e.target.value))}
+                  className="admin-input mt-1"
+                />
+              </label>
               {error && (
-                <div className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{error}</div>
+                <div className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">
+                  {error}
+                </div>
               )}
             </div>
 
@@ -183,7 +255,7 @@ export function CategoriesAdmin() {
                 disabled={!name.trim() || saving}
                 className="flex-1 py-2.5 rounded-xl bg-gray-900 text-white font-semibold text-sm active:scale-95 transition-all disabled:opacity-50"
               >
-                {saving ? 'Сохранение...' : 'Сохранить'}
+                {saving ? "Сохранение..." : "Сохранить"}
               </button>
             </div>
           </div>

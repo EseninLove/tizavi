@@ -1,11 +1,12 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateAdmin, sendJSON, unauthorized } from './_helpers.js';
-import { sql } from './_db.js';
-import { seedProducts } from './_seed-data.js';
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { authenticateAdmin, sendJSON, unauthorized } from "./_helpers.js";
+import { sql } from "./_db.js";
+import { seedProducts } from "./_seed-data.js";
+import { ensureCommerceSchema } from "./_schema.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return sendJSON(res, 405, { ok: false, error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return sendJSON(res, 405, { ok: false, error: "Method not allowed" });
   }
 
   const { authorized } = await authenticateAdmin(req);
@@ -123,15 +124,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Сидируем продуктовые категории по умолчанию
     const defaultCategories = [
-      { slug: 'fruits-vegetables', name: 'Овощи и фрукты' },
-      { slug: 'dairy', name: 'Молочные продукты и яйца' },
-      { slug: 'meat', name: 'Мясо и птица' },
-      { slug: 'fish', name: 'Рыба и морепродукты' },
-      { slug: 'bakery', name: 'Хлеб и выпечка' },
-      { slug: 'pantry', name: 'Бакалея' },
-      { slug: 'drinks', name: 'Напитки' },
-      { slug: 'frozen', name: 'Заморозка' },
-      { slug: 'sweets', name: 'Сладости и снеки' },
+      { slug: "fruits-vegetables", name: "Овощи и фрукты" },
+      { slug: "dairy", name: "Молочные продукты и яйца" },
+      { slug: "meat", name: "Мясо и птица" },
+      { slug: "fish", name: "Рыба и морепродукты" },
+      { slug: "bakery", name: "Хлеб и выпечка" },
+      { slug: "pantry", name: "Бакалея" },
+      { slug: "drinks", name: "Напитки" },
+      { slug: "frozen", name: "Заморозка" },
+      { slug: "sweets", name: "Сладости и снеки" },
     ];
     for (let i = 0; i < defaultCategories.length; i++) {
       const c = defaultCategories[i];
@@ -162,16 +163,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       productsSeeded = seedProducts.length;
     }
 
+    await ensureCommerceSchema();
     return sendJSON(res, 200, {
       ok: true,
-      message: 'База данных инициализирована',
+      message: "База данных инициализирована",
       productsSeeded,
       adminAdded: telegramId ? true : false,
     });
   } catch (err) {
     return sendJSON(res, 500, {
       ok: false,
-      error: 'Ошибка инициализации БД',
+      error: "Ошибка инициализации БД",
       detail: err instanceof Error ? err.message : String(err),
     });
   }

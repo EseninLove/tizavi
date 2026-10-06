@@ -1,5 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { TelegramUser } from '../types';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import type { TelegramUser } from "../types";
 
 declare global {
   interface Window {
@@ -16,7 +23,7 @@ interface TelegramWebApp {
   };
   version: string;
   platform: string;
-  colorScheme: 'light' | 'dark';
+  colorScheme: "light" | "dark";
   themeParams: Record<string, string>;
   isExpanded: boolean;
   viewportHeight: number;
@@ -43,16 +50,23 @@ interface TelegramWebApp {
     offClick: (cb: () => void) => void;
   };
   HapticFeedback: {
-    impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void;
-    notificationOccurred: (type: 'error' | 'success' | 'warning') => void;
+    impactOccurred: (
+      style: "light" | "medium" | "heavy" | "rigid" | "soft",
+    ) => void;
+    notificationOccurred: (type: "error" | "success" | "warning") => void;
     selectionChanged: () => void;
   };
+  openLink?: (url: string) => void;
   openInvoice: (url: string, cb: (status: string) => void) => void;
   showAlert: (message: string, cb?: () => void) => void;
   showConfirm: (message: string, cb?: (ok: boolean) => void) => void;
   showPopup: (
-    params: { title?: string; message: string; buttons?: Array<{ id?: string; text: string }> },
-    cb?: (id: string) => void
+    params: {
+      title?: string;
+      message: string;
+      buttons?: Array<{ id?: string; text: string }>;
+    },
+    cb?: (id: string) => void,
   ) => void;
   ready: () => void;
   expand: () => void;
@@ -66,10 +80,10 @@ interface TelegramWebApp {
 interface TelegramContextValue {
   webApp: TelegramWebApp | null;
   user: TelegramUser | null;
-  colorScheme: 'light' | 'dark';
+  colorScheme: "light" | "dark";
   haptic: {
-    impact: (style?: 'light' | 'medium' | 'heavy') => void;
-    notify: (type: 'success' | 'error' | 'warning') => void;
+    impact: (style?: "light" | "medium" | "heavy") => void;
+    notify: (type: "success" | "error" | "warning") => void;
     select: () => void;
   };
 }
@@ -92,17 +106,22 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     () => ({
       webApp,
       user: webApp?.initDataUnsafe?.user ?? null,
-      colorScheme: webApp?.colorScheme ?? 'light',
+      colorScheme: webApp?.colorScheme ?? "light",
       haptic: {
-        impact: (style = 'light') => webApp?.HapticFeedback?.impactOccurred(style),
+        impact: (style = "light") =>
+          webApp?.HapticFeedback?.impactOccurred(style),
         notify: (type) => webApp?.HapticFeedback?.notificationOccurred(type),
         select: () => webApp?.HapticFeedback?.selectionChanged(),
       },
     }),
-    [webApp]
+    [webApp],
   );
 
-  return <TelegramContext.Provider value={value}>{children}</TelegramContext.Provider>;
+  return (
+    <TelegramContext.Provider value={value}>
+      {children}
+    </TelegramContext.Provider>
+  );
 }
 
 export function useTelegram(): TelegramContextValue {
@@ -111,7 +130,7 @@ export function useTelegram(): TelegramContextValue {
     return {
       webApp: null,
       user: null,
-      colorScheme: 'light',
+      colorScheme: "light",
       haptic: {
         impact: () => {},
         notify: () => {},

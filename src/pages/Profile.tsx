@@ -1,29 +1,62 @@
-import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
-import { useSubscription } from '../context/SubscriptionContext';
-import { useTheme, type Theme } from '../context/ThemeContext';
-import { useTelegram } from '../lib/telegram';
-import { formatPrice, formatDate } from '../utils/format';
-import { EmptyState } from '../components/EmptyState';
-import { useState } from 'react';
+import { useNavigate } from "react-router-dom";
+import { useApp } from "../context/AppContext";
+import { useSubscription } from "../context/SubscriptionContext";
+import { useTheme, type Theme } from "../context/ThemeContext";
+import { useTelegram } from "../lib/telegram";
+import { formatPrice, formatDate } from "../utils/format";
+import { EmptyState } from "../components/EmptyState";
+import { orderStatusLabel, paymentStatusLabels } from "../utils/orders";
+import { useProducts } from "../context/ProductsContext";
+import { useState } from "react";
 
 export function Profile() {
   const navigate = useNavigate();
   const { user } = useTelegram();
-  const { orders, wishlist, cartCount } = useApp();
-  const { active: subscribed, expiresAt, priceRub, days, loading: subLoading } = useSubscription();
+  const {
+    orders,
+    wishlist,
+    cartCount,
+    addToCart,
+    ordersLoading,
+    ordersError,
+    refreshOrders,
+  } = useApp();
+  const {
+    active: subscribed,
+    expiresAt,
+    priceRub,
+    days,
+    loading: subLoading,
+  } = useSubscription();
   const { theme, setTheme } = useTheme();
   const [showAllOrders, setShowAllOrders] = useState(false);
+  const { products, loading: productsLoading } = useProducts();
+  const [repeatMessage, setRepeatMessage] = useState("");
+  const repeat = (order: (typeof orders)[number]) => {
+    let skipped = 0;
+    for (const item of order.items) {
+      const product = products.find(
+        (p) => p.id === item.product.id && p.inStock,
+      );
+      if (product) addToCart(product, item.quantity);
+      else skipped++;
+    }
+    setRepeatMessage(
+      skipped
+        ? `Доступные товары добавлены. ${skipped} позиций сейчас недоступны.`
+        : "Товары добавлены по текущим ценам.",
+    );
+  };
 
   const themeOptions: Array<{ value: Theme; label: string; icon: string }> = [
-    { value: 'dark', label: 'Тёмная', icon: '🌙' },
-    { value: 'light', label: 'Светлая', icon: '☀️' },
+    { value: "dark", label: "Тёмная", icon: "🌙" },
+    { value: "light", label: "Светлая", icon: "☀️" },
   ];
 
   const displayName = user
-    ? `${user.first_name}${user.last_name ? ' ' + user.last_name : ''}`
-    : 'Гость';
-  const initials = (user?.first_name?.[0] ?? 'Г').toUpperCase();
+    ? `${user.first_name}${user.last_name ? " " + user.last_name : ""}`
+    : "Гость";
+  const initials = (user?.first_name?.[0] ?? "Г").toUpperCase();
 
   const visibleOrders = showAllOrders ? orders : orders.slice(0, 3);
 
@@ -47,7 +80,9 @@ export function Profile() {
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-tg-text truncate">{displayName}</h2>
+            <h2 className="text-lg font-bold text-tg-text truncate">
+              {displayName}
+            </h2>
             {user?.username && (
               <p className="text-sm text-tg-hint">@{user.username}</p>
             )}
@@ -61,7 +96,7 @@ export function Profile() {
 
         <section
           className={`section-card p-4 flex items-center gap-3 ${
-            subscribed ? 'border-2 border-green-500' : ''
+            subscribed ? "border-2 border-green-500" : ""
           }`}
         >
           {subLoading ? (
@@ -78,7 +113,9 @@ export function Profile() {
                 ✓
               </span>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-tg-text">Подписка оформлена</div>
+                <div className="text-sm font-bold text-tg-text">
+                  Подписка оформлена
+                </div>
                 {expiresAt && (
                   <div className="text-xs text-tg-hint mt-0.5">
                     Действует до {formatDate(new Date(expiresAt).getTime())}
@@ -86,7 +123,7 @@ export function Profile() {
                 )}
               </div>
               <button
-                onClick={() => navigate('/subscribe')}
+                onClick={() => navigate("/subscribe")}
                 className="px-3 py-2 rounded-xl bg-tg-secondary-bg text-xs font-semibold text-tg-text active:scale-95 transition-transform shrink-0"
               >
                 Продлить
@@ -98,13 +135,16 @@ export function Profile() {
                 💳
               </span>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-tg-text">Подписка не оформлена</div>
+                <div className="text-sm font-bold text-tg-text">
+                  Подписка не оформлена
+                </div>
                 <div className="text-xs text-tg-hint mt-0.5">
-                  {formatPrice(priceRub)} на {days} дней — без неё заказы недоступны
+                  {formatPrice(priceRub)} на {days} дней — без неё заказы
+                  недоступны
                 </div>
               </div>
               <button
-                onClick={() => navigate('/subscribe')}
+                onClick={() => navigate("/subscribe")}
                 className="px-3 py-2 rounded-xl bg-tg-button text-tg-button-text text-xs font-semibold active:scale-95 transition-transform shrink-0"
               >
                 Оформить
@@ -115,21 +155,27 @@ export function Profile() {
 
         <section className="grid grid-cols-3 gap-2">
           <button
-            onClick={() => navigate('/cart')}
+            onClick={() => navigate("/cart")}
             className="section-card p-3 flex flex-col items-center active:scale-95 transition-transform"
           >
-            <span className="text-2xl font-bold text-tg-button">{cartCount}</span>
+            <span className="text-2xl font-bold text-tg-button">
+              {cartCount}
+            </span>
             <span className="text-xs text-tg-hint mt-0.5">В корзине</span>
           </button>
           <button
-            onClick={() => navigate('/wishlist')}
+            onClick={() => navigate("/wishlist")}
             className="section-card p-3 flex flex-col items-center active:scale-95 transition-transform"
           >
-            <span className="text-2xl font-bold text-tg-button">{wishlist.length}</span>
+            <span className="text-2xl font-bold text-tg-button">
+              {wishlist.length}
+            </span>
             <span className="text-xs text-tg-hint mt-0.5">Избранное</span>
           </button>
           <div className="section-card p-3 flex flex-col items-center">
-            <span className="text-2xl font-bold text-tg-button">{orders.length}</span>
+            <span className="text-2xl font-bold text-tg-button">
+              {orders.length}
+            </span>
             <span className="text-xs text-tg-hint mt-0.5">Заказов</span>
           </div>
         </section>
@@ -142,22 +188,47 @@ export function Profile() {
                 onClick={() => setShowAllOrders((s) => !s)}
                 className="text-sm text-tg-button font-medium"
               >
-                {showAllOrders ? 'Свернуть' : 'Все'}
+                {showAllOrders ? "Свернуть" : "Все"}
               </button>
             )}
           </div>
 
-          {visibleOrders.length > 0 ? (
+          {repeatMessage && (
+            <p role="status" className="text-sm text-tg-text mb-3">
+              {repeatMessage}{" "}
+              <button
+                onClick={() => navigate("/cart")}
+                className="text-tg-link"
+              >
+                В корзину →
+              </button>
+            </p>
+          )}
+          {ordersError && (
+            <p className="text-sm text-red-500 mb-3">
+              {ordersError}{" "}
+              <button onClick={() => void refreshOrders().catch(() => {})}>
+                Повторить
+              </button>
+            </p>
+          )}
+          {ordersLoading && orders.length === 0 ? (
+            <p className="text-sm text-tg-hint">Загружаем заказы…</p>
+          ) : visibleOrders.length > 0 ? (
             <div className="space-y-3">
               {visibleOrders.map((order) => (
                 <div key={order.id} className="section-card p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <h3 className="text-sm font-semibold text-tg-text">{order.id}</h3>
-                      <p className="text-xs text-tg-hint">{formatDate(order.createdAt)}</p>
+                      <h3 className="text-sm font-semibold text-tg-text">
+                        {order.id}
+                      </h3>
+                      <p className="text-xs text-tg-hint">
+                        {formatDate(order.createdAt)}
+                      </p>
                     </div>
                     <span className="px-2 py-0.5 text-xs font-medium rounded-md bg-green-100 text-green-700">
-                      Оплачен
+                      {orderStatusLabel(order)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mb-2">
@@ -180,8 +251,26 @@ export function Profile() {
                       {order.items.reduce((s, i) => s + i.quantity, 0)} товаров
                     </span>
                     <span className="text-sm font-bold text-tg-text">
-                      {formatPrice(order.total + (order.total >= 5000 ? 0 : 290))}
+                      {formatPrice(order.payableTotal)}
                     </span>
+                  </div>
+                  <p className="text-xs text-tg-hint mt-2">
+                    {paymentStatusLabels[order.paymentStatus]}
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => navigate(`/order-success/${order.id}`)}
+                      className="btn-secondary flex-1 text-xs"
+                    >
+                      Подробнее
+                    </button>
+                    <button
+                      disabled={productsLoading}
+                      onClick={() => repeat(order)}
+                      className="btn-primary flex-1 text-xs"
+                    >
+                      Повторить заказ
+                    </button>
                   </div>
                 </div>
               ))}
@@ -192,13 +281,15 @@ export function Profile() {
               title="Заказов пока нет"
               description="Оформите первый заказ, и он появится здесь"
               actionLabel="В каталог"
-              onAction={() => navigate('/')}
+              onAction={() => navigate("/")}
             />
           )}
         </section>
 
         <section className="section-card p-4">
-          <div className="text-sm font-bold text-tg-text mb-3">🎨 Оформление</div>
+          <div className="text-sm font-bold text-tg-text mb-3">
+            🎨 Оформление
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {themeOptions.map(({ value, label, icon }) => (
               <button
@@ -206,8 +297,8 @@ export function Profile() {
                 onClick={() => setTheme(value)}
                 className={`py-2.5 rounded-xl text-sm font-semibold active:scale-95 transition-all ${
                   theme === value
-                    ? 'bg-tg-button text-tg-button-text'
-                    : 'bg-tg-secondary-bg text-tg-text'
+                    ? "bg-tg-button text-tg-button-text"
+                    : "bg-tg-secondary-bg text-tg-text"
                 }`}
               >
                 {icon} {label}
@@ -218,28 +309,32 @@ export function Profile() {
 
         <section className="section-card divide-y divide-tg-separator">
           <button
-            onClick={() => navigate('/legal/offer')}
+            onClick={() => navigate("/legal/offer")}
             className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors"
           >
             <span className="text-sm text-tg-text">📄 Договор-оферта</span>
             <span className="text-tg-hint">›</span>
           </button>
           <button
-            onClick={() => navigate('/legal/privacy')}
+            onClick={() => navigate("/legal/privacy")}
             className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors"
           >
-            <span className="text-sm text-tg-text">🔒 Политика конфиденциальности</span>
+            <span className="text-sm text-tg-text">
+              🔒 Политика конфиденциальности
+            </span>
             <span className="text-tg-hint">›</span>
           </button>
           <button
-            onClick={() => navigate('/legal/terms')}
+            onClick={() => navigate("/legal/terms")}
             className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors"
           >
-            <span className="text-sm text-tg-text">📋 Пользовательское соглашение</span>
+            <span className="text-sm text-tg-text">
+              📋 Пользовательское соглашение
+            </span>
             <span className="text-tg-hint">›</span>
           </button>
           <button
-            onClick={() => navigate('/support')}
+            onClick={() => navigate("/support")}
             className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors"
           >
             <span className="text-sm text-tg-text">🎧 Поддержка</span>
@@ -247,7 +342,9 @@ export function Profile() {
           </button>
         </section>
 
-        <p className="text-center text-xs text-tg-hint pt-2">Tizavi Shop · v1.0.0</p>
+        <p className="text-center text-xs text-tg-hint pt-2">
+          Tizavi Shop · v1.0.0
+        </p>
         <div className="h-2" />
       </main>
     </div>

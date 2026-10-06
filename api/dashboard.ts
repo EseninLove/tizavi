@@ -1,18 +1,20 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sql, authenticateAdmin, sendJSON, unauthorized } from './_helpers.js';
+import { ensureCommerceSchema } from "./_schema.js";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { sql, authenticateAdmin, sendJSON, unauthorized } from "./_helpers.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { authorized } = await authenticateAdmin(req);
   if (!authorized) return unauthorized(res);
 
-  if (req.method !== 'GET') {
-    return sendJSON(res, 405, { ok: false, error: 'Method not allowed' });
+  if (req.method !== "GET") {
+    return sendJSON(res, 405, { ok: false, error: "Method not allowed" });
   }
 
   try {
+    await ensureCommerceSchema();
     const [productsResult, ordersResult, usersResult] = await Promise.all([
       sql`SELECT COUNT(*) as count FROM products`,
-      sql`SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as revenue FROM orders`,
+      sql`SELECT COUNT(*) as count, COALESCE(SUM(CASE WHEN payment_status='succeeded' AND status!='cancelled' THEN payable_total ELSE 0 END), 0) as revenue FROM orders`,
       sql`SELECT COUNT(*) as count FROM users`,
     ]);
 
@@ -30,18 +32,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `;
 
     const topProducts = await sql`
-      SELECT p.name, p.image, COUNT(oi->>'product_id') as times_ordered
+      SELECT p.name, p.image, COUNT(*) as times_ordered
       FROM orders, jsonb_array_elements(items) as oi
-      JOIN products p ON (oi->>'product_id')::int = p.id
+      JOIN products p ON COALESCE(oi->'product'->>'id',oi->>'product_id') = p.id::text
+      WHERE orders.payment_status='succeeded' AND orders.status!='cancelled'
       GROUP BY p.name, p.image
       ORDER BY times_ordered DESC
       LIMIT 5
     `;
 
     const statusCounts: Record<string, number> = {};
-    (statusResult.rows as Array<{ status: string; count: string }>).forEach((row) => {
-      statusCounts[row.status] = parseInt(row.count, 10);
-    });
+    (statusResult.rows as Array<{ status: string; count: string }>).forEach(
+      (row) => {
+        statusCounts[row.status] = parseInt(row.count, 10);
+      },
+    );
 
     return sendJSON(res, 200, {
       ok: true,
@@ -49,7 +54,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         products: parseInt((productsResult.rows[0] as any).count, 10),
         orders: parseInt((ordersResult.rows[0] as any).count, 10),
         users: parseInt((usersResult.rows[0] as any).count, 10),
-        revenue: parseInt((ordersResult.rows[0] as any).revenue, 10),
+        revenue: Number((ordersResult.rows[0] as any).revenue),
         statusCounts,
       },
       recentOrders: recentOrders.rows,
@@ -58,7 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err) {
     return sendJSON(res, 500, {
       ok: false,
-      error: 'Ошибка базы данных',
+      error: "Ошибка базы данных",
       detail: err instanceof Error ? err.message : String(err),
     });
   }

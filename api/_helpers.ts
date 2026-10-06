@@ -1,9 +1,9 @@
-import { sql } from './_db.js';
-import type { VercelRequest } from '@vercel/node';
-import crypto from 'crypto';
+import { sql } from "./_db.js";
+import type { VercelRequest } from "@vercel/node";
+import crypto from "crypto";
 
-const BOT_TOKEN = process.env.BOT_TOKEN || '';
-const ADMIN_KEY = process.env.ADMIN_KEY || '';
+const BOT_TOKEN = process.env.BOT_TOKEN || "";
+const ADMIN_KEY = process.env.ADMIN_KEY || "";
 
 export { sql };
 
@@ -14,37 +14,51 @@ export interface AdminUser {
   role: string;
 }
 
-export function validateInitData(initData: string): { valid: boolean; userId?: number } {
+export function validateInitData(initData: string): {
+  valid: boolean;
+  userId?: number;
+} {
   try {
     if (!BOT_TOKEN) return { valid: false };
 
     const params = new URLSearchParams(initData);
-    const hash = params.get('hash');
-    if (!hash) return { valid: false };
+    const hash = params.get("hash");
+    if (!hash || !/^[a-f0-9]{64}$/i.test(hash)) return { valid: false };
+    const authDate = Number(params.get("auth_date"));
+    const age = Math.floor(Date.now() / 1000) - authDate;
+    if (!Number.isSafeInteger(authDate) || age < -60 || age > 86400)
+      return { valid: false };
 
-    params.delete('hash');
+    params.delete("hash");
 
     const dataCheckString = Array.from(params.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, value]) => `${key}=${value}`)
-      .join('\n');
+      .join("\n");
 
     const secretKey = crypto
-      .createHmac('sha256', 'WebAppData')
+      .createHmac("sha256", "WebAppData")
       .update(BOT_TOKEN)
       .digest();
 
     const calculatedHash = crypto
-      .createHmac('sha256', secretKey)
+      .createHmac("sha256", secretKey)
       .update(dataCheckString)
-      .digest('hex');
+      .digest("hex");
 
-    if (calculatedHash !== hash) return { valid: false };
+    if (
+      !crypto.timingSafeEqual(
+        Buffer.from(calculatedHash, "hex"),
+        Buffer.from(hash, "hex"),
+      )
+    )
+      return { valid: false };
 
-    const userParam = new URLSearchParams(initData).get('user');
+    const userParam = new URLSearchParams(initData).get("user");
     if (!userParam) return { valid: false };
 
     const user = JSON.parse(userParam);
+    if (!Number.isSafeInteger(user.id) || user.id <= 0) return { valid: false };
     return { valid: true, userId: user.id };
   } catch {
     return { valid: false };
@@ -55,22 +69,22 @@ export async function authenticateAdmin(req: VercelRequest): Promise<{
   authorized: boolean;
   user?: AdminUser;
 }> {
-  const authHeader = req.headers['x-admin-auth'] as string | undefined;
+  const authHeader = req.headers["x-admin-auth"] as string | undefined;
 
   if (!authHeader) {
     return { authorized: false };
   }
 
-  const [type, token] = authHeader.split(' ');
+  const [type, token] = authHeader.split(" ");
 
-  if (type === 'Key' && token && token.trim() === ADMIN_KEY.trim()) {
+  if (type === "Key" && token && token.trim() === ADMIN_KEY.trim()) {
     return {
       authorized: true,
-      user: { telegramId: 0, role: 'super_admin', firstName: 'Admin' },
+      user: { telegramId: 0, role: "super_admin", firstName: "Admin" },
     };
   }
 
-  if (type === 'Telegram' && token) {
+  if (type === "Telegram" && token) {
     const { valid, userId } = validateInitData(token);
     if (!valid || !userId) return { authorized: false };
 
@@ -97,7 +111,7 @@ export function sendJSON(res: any, status: number, data: unknown) {
 }
 
 export function unauthorized(res: any) {
-  return sendJSON(res, 401, { ok: false, error: 'Не авторизован' });
+  return sendJSON(res, 401, { ok: false, error: "Не авторизован" });
 }
 
 interface InitDataUser {
@@ -110,7 +124,7 @@ interface InitDataUser {
 
 export function parseInitDataUser(initData: string): InitDataUser | null {
   try {
-    const userParam = new URLSearchParams(initData).get('user');
+    const userParam = new URLSearchParams(initData).get("user");
     if (!userParam) return null;
     const user = JSON.parse(userParam) as InitDataUser;
     return user && user.id ? user : null;
@@ -119,7 +133,10 @@ export function parseInitDataUser(initData: string): InitDataUser | null {
   }
 }
 
-export async function upsertUser(initData: string, telegramId: number): Promise<void> {
+export async function upsertUser(
+  initData: string,
+  telegramId: number,
+): Promise<void> {
   try {
     const user = parseInitDataUser(initData);
     await sql`
