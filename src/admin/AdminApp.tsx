@@ -1,3 +1,4 @@
+import { EmailSettingsAdmin } from "./EmailSettingsAdmin";
 import { useCallback, useEffect, useState } from "react";
 import { Routes, Route, NavLink, useLocation, Link } from "react-router-dom";
 import { authApi, apiFetch } from "./api";
@@ -52,6 +53,12 @@ const groups = [
   {
     label: "Настройки",
     items: [
+      {
+        path: "/admin/email",
+        label: "Почтовый сервис",
+        icon: "support",
+        owner: true,
+      },
       {
         path: "/admin/payments",
         label: "Оплата",
@@ -212,6 +219,7 @@ export function AdminApp() {
           <Route path="users" element={<UsersAdmin />} />
           <Route path="support" element={<SupportAdmin />} />
           <Route path="admins" element={<AdminsAdmin />} />
+          <Route path="email" element={<EmailSettingsAdmin />} />
           <Route path="payments" element={<PaymentsAdmin />} />
           <Route path="delivery" element={<DeliveryAdmin />} />
           <Route path="reviews" element={<ReviewsAdmin />} />

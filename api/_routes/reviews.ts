@@ -1,5 +1,6 @@
+import { requireCustomer } from "../_customer-auth.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { sql, validateInitData, authenticateAdmin } from "../_helpers.js";
+import { sql, authenticateAdmin } from "../_helpers.js";
 import { ensureCommerceSchema } from "../_schema.js";
 import { positiveInteger, ShopError } from "../_commerce.js";
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -30,20 +31,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({ ok: true });
     }
     if (req.method !== "POST") return res.status(405).json({ ok: false });
-    const { valid, userId } = validateInitData(req.body?.initData || "");
-    if (!valid || !userId)
-      return res
-        .status(401)
-        .json({ ok: false, error: "Откройте магазин в Telegram" });
+    const customer = await requireCustomer(req),
+      userId = Number(customer.id);
     const productId = positiveInteger(req.body?.productId),
       rating = positiveInteger(req.body?.rating, 5),
       message = String(req.body?.message || "").trim();
     if (message.length > 2000) throw new ShopError("Отзыв слишком длинный");
     const purchase =
-      await sql`SELECT 1 FROM orders o,jsonb_array_elements(o.items) item WHERE o.telegram_user_id=${userId} AND o.payment_status='succeeded' AND o.status!='cancelled' AND item->'product'->>'id'=${String(productId)} LIMIT 1`;
+      await sql`SELECT 1 FROM orders o,jsonb_array_elements(o.items) item WHERE o.user_id=${userId} AND o.payment_status='succeeded' AND o.status!='cancelled' AND item->'product'->>'id'=${String(productId)} LIMIT 1`;
     if (!purchase.rows.length)
       throw new ShopError("Оценить товар можно после его покупки", 403);
-    await sql`INSERT INTO product_reviews(product_id,telegram_id,rating,message) VALUES(${productId},${userId},${rating},${message}) ON CONFLICT(product_id,telegram_id) DO UPDATE SET rating=EXCLUDED.rating,message=EXCLUDED.message,visible=FALSE,created_at=NOW()`;
+    await sql`INSERT INTO product_reviews(product_id,user_id,telegram_id,rating,message) VALUES(${productId},${userId},${customer.telegram_id},${rating},${message}) ON CONFLICT(product_id,user_id) DO UPDATE SET rating=EXCLUDED.rating,message=EXCLUDED.message,visible=FALSE,created_at=NOW()`;
     return res.json({ ok: true });
   } catch (error) {
     return res.status(error instanceof ShopError ? error.status : 503).json({

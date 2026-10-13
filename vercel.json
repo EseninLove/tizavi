@@ -14,7 +14,7 @@
   ],
   "functions": {
     "api/index.ts": {
-      "includeFiles": "db/002-commerce.sql",
+      "includeFiles": "db/*.sql",
       "maxDuration": 60
     }
   }

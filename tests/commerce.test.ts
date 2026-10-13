@@ -176,10 +176,17 @@ test("database and API payment lifecycle rejects forged activation and applies r
     "CREATE FUNCTION pg_advisory_xact_lock(bigint) RETURNS void LANGUAGE SQL AS $$ SELECT $$;",
   );
   const { pool } = await import("../api/_db");
-  let failOrderSave = false;
+  let failOrderSave = false,
+    legacyInserted = false;
   const query = async (text: string, values: unknown[] = []) => {
     if (failOrderSave && /INSERT INTO orders/i.test(text))
       throw new Error("Simulated storage failure");
+    if (!legacyInserted && text.includes("users_email_unique")) {
+      legacyInserted = true;
+      await db.exec(
+        "INSERT INTO users(telegram_id,first_name) VALUES(909,'Legacy'); INSERT INTO orders(id,order_number,total,telegram_user_id) VALUES(9000,'LEGACY-PRESERVED',100,909); INSERT INTO subscriptions(telegram_id,expires_at) VALUES(909,NOW()+INTERVAL '3 days');",
+      );
+    }
     if (!values.length && text.split(";").filter((s) => s.trim()).length > 1) {
       const rows = await db.exec(text);
       const last = rows[rows.length - 1];
@@ -259,10 +266,16 @@ test("database and API payment lifecycle rejects forged activation and applies r
     body: any = {},
     params: any = {},
     admin = false,
+    headers: Record<string, string> = {},
   ) => {
     let status = 200,
       result: any;
+    const responseHeaders: Record<string, string> = {};
     const res = {
+      setHeader(name: string, value: string) {
+        responseHeaders[name.toLowerCase()] = value;
+        return this;
+      },
       status(code: number) {
         status = code;
         return this;
@@ -284,11 +297,14 @@ test("database and API payment lifecycle rejects forged activation and applies r
         method,
         body,
         query: params,
-        headers: admin ? { "x-admin-auth": "Key local-test-admin" } : {},
+        headers: {
+          ...(admin ? { "x-admin-auth": "Key local-test-admin" } : {}),
+          ...headers,
+        },
       },
       res,
     );
-    return { status, body: result };
+    return { status, body: result, headers: responseHeaders };
   };
   function init(userId = 101) {
     const data = new URLSearchParams({
@@ -321,6 +337,22 @@ test("database and API payment lifecycle rejects forged activation and applies r
       await import("../api/_payments");
     const seeded = await call(seed, "POST", {}, {}, true);
     assert.equal(seeded.status, 200, JSON.stringify(seeded.body));
+    const legacyUser = (
+      await query("SELECT id FROM users WHERE telegram_id=909")
+    ).rows[0] as any;
+    assert.equal(
+      (
+        await query(
+          "SELECT user_id FROM orders WHERE order_number='LEGACY-PRESERVED'",
+        )
+      ).rows[0].user_id,
+      legacyUser.id,
+    );
+    assert.equal(
+      (await query("SELECT user_id FROM subscriptions WHERE telegram_id=909"))
+        .rows[0].user_id,
+      legacyUser.id,
+    );
     const router = (await import("../api/index")).default;
     assert.equal(
       (await call(router, "GET", {}, { route: "categories" })).status,
@@ -347,7 +379,14 @@ test("database and API payment lifecycle rejects forged activation and applies r
       "INSERT INTO warehouses(name,address,latitude,longitude) VALUES('Центр','Москва',55.75,37.62)",
     );
     await query("INSERT INTO couriers(name,warehouse_id) VALUES('Курьер',1)");
-    const sub = await createPayment(101, "subscription", "subscription-key-1");
+    const { telegramCustomer } = await import("../api/_customer-auth");
+    const account = await telegramCustomer(init());
+    const accountId = Number(account!.id);
+    const sub = await createPayment(
+      accountId,
+      "subscription",
+      "subscription-key-1",
+    );
     assert.equal(
       (await call(subscription, "POST", { initData: init() })).body.active,
       false,
@@ -355,10 +394,10 @@ test("database and API payment lifecycle rejects forged activation and applies r
     const subRemote = [...remote.values()][0];
     subRemote.status = "succeeded";
     subRemote.paid = true;
-    await reconcilePayment(sub.paymentId, 101);
+    await reconcilePayment(sub.paymentId, accountId);
     const expires = (await call(subscription, "POST", { initData: init() }))
       .body.expiresAt;
-    await reconcilePayment(sub.paymentId, 101);
+    await reconcilePayment(sub.paymentId, accountId);
     assert.equal(
       (await call(subscription, "POST", { initData: init() })).body.expiresAt,
       expires,
@@ -380,7 +419,11 @@ test("database and API payment lifecycle rejects forged activation and applies r
     assert.equal(failed.status, 503);
     assert.equal(failed.body.ok, false);
     assert.equal(
-      (await query("SELECT COUNT(*) AS count FROM orders")).rows[0].count,
+      (
+        await query("SELECT COUNT(*) AS count FROM orders WHERE user_id=$1", [
+          accountId,
+        ])
+      ).rows[0].count,
       0,
     );
     const created = await call(orders, "POST", draft);
@@ -412,13 +455,13 @@ test("database and API payment lifecycle rejects forged activation and applies r
       403,
     );
     const payment = await createPayment(
-      101,
+      accountId,
       "order",
       "payment-key-0001",
       order.id,
     );
     const paymentAgain = await createPayment(
-      101,
+      accountId,
       "order",
       "payment-key-0002",
       order.id,
@@ -428,15 +471,15 @@ test("database and API payment lifecycle rejects forged activation and applies r
     remotePayment.status = "succeeded";
     remotePayment.paid = true;
     forgedAmount = true;
-    await assert.rejects(() => reconcilePayment(payment.paymentId, 101));
+    await assert.rejects(() => reconcilePayment(payment.paymentId, accountId));
     assert.equal(
       (await call(myOrders, "POST", { initData: init() })).body.orders[0]
         .paymentStatus,
       "pending",
     );
     forgedAmount = false;
-    await reconcilePayment(payment.paymentId, 101);
-    await reconcilePayment(payment.paymentId, 101);
+    await reconcilePayment(payment.paymentId, accountId);
+    await reconcilePayment(payment.paymentId, accountId);
     const paid = (await call(myOrders, "POST", { initData: init() })).body
       .orders[0];
     assert.equal(paid.paymentStatus, "succeeded");
@@ -498,22 +541,22 @@ test("database and API payment lifecycle rejects forged activation and applies r
       requestKey: "order-key-00002",
     });
     const next = await createPayment(
-      101,
+      accountId,
       "order",
       "payment-key-0003",
       second.body.order.id,
     );
     const nextRemote = [...remote.values()][2];
     nextRemote.status = "canceled";
-    await reconcilePayment(next.paymentId, 101);
+    await reconcilePayment(next.paymentId, accountId);
     const retry = await createPayment(
-      101,
+      accountId,
       "order",
       "payment-key-0004",
       second.body.order.id,
     );
     assert.notEqual(retry.paymentId, next.paymentId);
-    await reconcilePayment(next.paymentId, 101);
+    await reconcilePayment(next.paymentId, accountId);
     assert.equal(
       (await query("SELECT payment_status FROM orders WHERE id=2")).rows[0]
         .payment_status,
@@ -527,12 +570,394 @@ test("database and API payment lifecycle rejects forged activation and applies r
     const retryRemote = [...remote.values()][3];
     retryRemote.status = "succeeded";
     retryRemote.paid = true;
-    await reconcilePayment(retry.paymentId, 101);
-    await reconcilePayment(next.paymentId, 101);
+    await reconcilePayment(retry.paymentId, accountId);
+    await reconcilePayment(next.paymentId, accountId);
     assert.equal(
       (await query("SELECT payment_status FROM orders WHERE id=2")).rows[0]
         .payment_status,
       "succeeded",
+    );
+
+    const auth = (await import("../api/_routes/customer-auth")).default;
+    const mail = (await import("../api/_routes/email-settings")).default;
+    const sameOrigin = {
+      host: "shop.example",
+      origin: "https://shop.example",
+      "x-forwarded-for": "127.0.0.10",
+    };
+    const password = "local-test-password-2026";
+    assert.equal(
+      (
+        await call(
+          auth,
+          "POST",
+          { action: "register", email: "wrong@@example.com", password },
+          {},
+          false,
+          sameOrigin,
+        )
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await call(
+          auth,
+          "POST",
+          {
+            action: "register",
+            email: "blank-password@example.com",
+            password: " ".repeat(12),
+          },
+          {},
+          false,
+          sameOrigin,
+        )
+      ).status,
+      400,
+    );
+    const registered = await call(
+      auth,
+      "POST",
+      {
+        action: "register",
+        email: " Test@Example.com ",
+        password,
+        name: "Email Buyer",
+      },
+      {},
+      false,
+      sameOrigin,
+    );
+    assert.equal(registered.status, 201, JSON.stringify(registered.body));
+    assert.equal(registered.body.user.email, "test@example.com");
+    assert.equal(registered.body.user.emailVerified, false);
+    assert.equal(registered.body.user.telegramId, null);
+    assert.equal(registered.body.user.password_hash, undefined);
+    const cookie = registered.headers["set-cookie"].split(";")[0];
+    assert.match(registered.headers["set-cookie"], /HttpOnly/);
+    assert.match(registered.headers["set-cookie"], /SameSite=Lax/);
+    const emailHeaders = { ...sameOrigin, cookie };
+    const storedUser = (
+      await query("SELECT * FROM users WHERE email='test@example.com'")
+    ).rows[0] as any;
+    assert.notEqual(storedUser.password_hash, password);
+    assert.match(storedUser.password_hash, /^scrypt\$/);
+    const token = cookie.split("=")[1];
+    assert.equal(
+      (
+        await query("SELECT 1 FROM customer_sessions WHERE token_hash=$1", [
+          token,
+        ])
+      ).rows.length,
+      0,
+    );
+    assert.equal(
+      (
+        await call(
+          auth,
+          "POST",
+          { action: "register", email: "test@example.com", password },
+          {},
+          false,
+          sameOrigin,
+        )
+      ).status,
+      409,
+    );
+    assert.equal(
+      (
+        await call(
+          auth,
+          "POST",
+          { action: "login", email: "test@example.com", password: "wrong" },
+          {},
+          false,
+          sameOrigin,
+        )
+      ).status,
+      401,
+    );
+    assert.equal(
+      (await call(auth, "GET", {}, {}, false, emailHeaders)).body.user.id,
+      registered.body.user.id,
+    );
+    assert.equal(
+      (await call(myOrders, "POST", {}, {}, false, emailHeaders)).body.orders
+        .length,
+      0,
+    );
+    assert.equal(
+      (
+        await call(
+          myOrders,
+          "POST",
+          { initData: "forged" },
+          {},
+          false,
+          emailHeaders,
+        )
+      ).status,
+      401,
+    );
+    assert.equal(
+      (
+        await call(myOrders, "POST", {}, {}, false, {
+          ...emailHeaders,
+          origin: "https://evil.example",
+        })
+      ).status,
+      403,
+    );
+    assert.equal(
+      (
+        await call(myOrders, "POST", {}, {}, false, {
+          host: "shop.example",
+          cookie,
+        })
+      ).status,
+      403,
+    );
+    const emailSub = await createPayment(
+      registered.body.user.id,
+      "subscription",
+      "email-sub-00001",
+    );
+    const emailSubIntent = (
+      await query("SELECT provider_id FROM payments WHERE id=$1", [
+        emailSub.paymentId,
+      ])
+    ).rows[0] as any;
+    remote.get(emailSubIntent.provider_id).status = "succeeded";
+    remote.get(emailSubIntent.provider_id).paid = true;
+    await reconcilePayment(emailSub.paymentId, registered.body.user.id);
+    assert.equal(
+      (await call(subscription, "POST", {}, {}, false, emailHeaders)).body
+        .active,
+      true,
+    );
+    const emailOrder = await call(
+      orders,
+      "POST",
+      { ...draft, initData: undefined, requestKey: "email-order-0001" },
+      {},
+      false,
+      emailHeaders,
+    );
+    assert.equal(emailOrder.status, 201, JSON.stringify(emailOrder.body));
+    const emailPayment = await createPayment(
+      registered.body.user.id,
+      "order",
+      "email-payment-001",
+      emailOrder.body.order.id,
+    );
+    await assert.rejects(() =>
+      reconcilePayment(emailPayment.paymentId, accountId),
+    );
+    const emailIntent = (
+      await query("SELECT provider_id FROM payments WHERE id=$1", [
+        emailPayment.paymentId,
+      ])
+    ).rows[0] as any;
+    remote.get(emailIntent.provider_id).status = "succeeded";
+    remote.get(emailIntent.provider_id).paid = true;
+    await reconcilePayment(emailPayment.paymentId, registered.body.user.id);
+    assert.equal(
+      (await call(myOrders, "POST", {}, {}, false, emailHeaders)).body.orders[0]
+        .paymentStatus,
+      "succeeded",
+    );
+    assert.equal(
+      (await call(myOrders, "POST", { initData: init() })).body.orders.length,
+      2,
+    );
+    assert.equal(
+      (await call(mail, "GET", {}, {}, false, emailHeaders)).status,
+      403,
+    );
+    const emailSettings = await call(
+      mail,
+      "PUT",
+      {
+        provider: "smtp",
+        host: "smtp.example.com",
+        port: 465,
+        username: "sender",
+        sender: "sender@example.com",
+        security: "tls",
+      },
+      {},
+      true,
+    );
+    assert.equal(emailSettings.body.sendingEnabled, false);
+    assert.equal(emailSettings.body.verificationEnabled, false);
+    const oldEncryptionKey = process.env.PAYMENT_SETTINGS_KEY;
+    process.env.PAYMENT_SETTINGS_KEY = "a".repeat(64);
+    const protectedMail = await call(
+      mail,
+      "PUT",
+      {
+        provider: "smtp",
+        host: "smtp.example.com",
+        port: 465,
+        username: "sender",
+        sender: "sender@example.com",
+        security: "tls",
+        password: "local-mail-test-secret",
+      },
+      {},
+      true,
+    );
+    assert.equal(protectedMail.status, 200);
+    assert.equal(protectedMail.body.settings.password_saved, true);
+    assert.equal(protectedMail.body.settings.encrypted_password, undefined);
+    assert.equal(protectedMail.body.settings.password, undefined);
+    const encryptedMail = (
+      await query("SELECT encrypted_password FROM email_settings WHERE id=1")
+    ).rows[0].encrypted_password as string;
+    assert.ok(!encryptedMail.includes("local-mail-test-secret"));
+    if (oldEncryptionKey === undefined) delete process.env.PAYMENT_SETTINGS_KEY;
+    else process.env.PAYMENT_SETTINGS_KEY = oldEncryptionKey;
+    const support = (await import("../api/_routes/support")).default;
+    const emailTicket = await call(
+      support,
+      "POST",
+      { subject: "Browser support", message: "A local test message" },
+      {},
+      false,
+      emailHeaders,
+    );
+    assert.equal(emailTicket.status, 201);
+    assert.equal(
+      (await call(support, "POST", { action: "my" }, {}, false, emailHeaders))
+        .body.tickets.length,
+      1,
+    );
+    assert.equal(
+      (await call(support, "POST", { action: "my", initData: init() })).body
+        .tickets.length,
+      0,
+    );
+    const emailReview = await call(
+      reviews,
+      "POST",
+      { productId: 1, rating: 4, message: "Email purchase review" },
+      {},
+      false,
+      emailHeaders,
+    );
+    assert.equal(emailReview.status, 200);
+
+    assert.equal(
+      (
+        await call(
+          auth,
+          "POST",
+          {
+            action: "attach-email",
+            initData: init(),
+            email: "test@example.com",
+            password,
+          },
+          {},
+          false,
+          sameOrigin,
+        )
+      ).status,
+      409,
+    );
+    const linked = await call(
+      auth,
+      "POST",
+      {
+        action: "attach-email",
+        initData: init(),
+        email: "linked@example.com",
+        password,
+      },
+      {},
+      false,
+      sameOrigin,
+    );
+    assert.equal(linked.status, 200);
+    assert.equal(linked.body.user.id, accountId);
+    const linkedLogin = await call(
+      auth,
+      "POST",
+      { action: "login", email: "linked@example.com", password },
+      {},
+      false,
+      { ...sameOrigin, "x-forwarded-for": "127.0.0.11" },
+    );
+    assert.equal(linkedLogin.status, 200);
+    const linkedHeaders = {
+      ...sameOrigin,
+      cookie: linkedLogin.headers["set-cookie"].split(";")[0],
+    };
+    assert.equal(
+      (await call(myOrders, "POST", {}, {}, false, linkedHeaders)).body.orders
+        .length,
+      2,
+    );
+    assert.equal(
+      (await call(subscription, "POST", {}, {}, false, linkedHeaders)).body
+        .active,
+      true,
+    );
+    const oldCookie = cookie;
+    const changed = await call(
+      auth,
+      "POST",
+      {
+        action: "change-password",
+        currentPassword: password,
+        password: "another-local-password-2026",
+      },
+      {},
+      false,
+      emailHeaders,
+    );
+    assert.equal(changed.status, 200);
+    assert.equal(
+      (
+        await call(auth, "GET", {}, {}, false, {
+          ...sameOrigin,
+          cookie: oldCookie,
+        })
+      ).body.user,
+      null,
+    );
+    const newHeaders = {
+      ...sameOrigin,
+      cookie: changed.headers["set-cookie"].split(";")[0],
+    };
+    await call(auth, "POST", { action: "logout" }, {}, false, newHeaders);
+    assert.equal(
+      (await call(auth, "GET", {}, {}, false, newHeaders)).body.user,
+      null,
+    );
+    await query(
+      "UPDATE customer_sessions SET expires_at=NOW()-INTERVAL '1 day'",
+    );
+    assert.equal(
+      (await call(myOrders, "POST", {}, {}, false, linkedHeaders)).status,
+      401,
+    );
+    let throttled = 0;
+    for (let i = 0; i < 16; i++) {
+      const response = await call(
+        auth,
+        "POST",
+        { action: "login", email: "rate@example.com", password: "bad" },
+        {},
+        false,
+        { ...sameOrigin, "x-forwarded-for": "127.0.0.99" },
+      );
+      if (response.status === 429) throttled++;
+    }
+    assert.ok(
+      throttled > 0,
+      "Password guessing is limited across server instances",
     );
   } finally {
     globalThis.fetch = originalFetch;

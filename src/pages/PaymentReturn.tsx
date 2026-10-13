@@ -1,3 +1,4 @@
+import { useAuth } from "../context/AuthContext";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTelegram } from "../lib/telegram";
@@ -5,6 +6,7 @@ import { useApp } from "../context/AppContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import { PENDING_PAYMENT, shopRequest, type PaymentCheck } from "../lib/api";
 export function PaymentReturn() {
+  const { user: account, loading: authLoading } = useAuth();
   const [params] = useSearchParams(),
     navigate = useNavigate(),
     { webApp } = useTelegram(),
@@ -17,16 +19,16 @@ export function PaymentReturn() {
   const check = async () => {
     if (!paymentId)
       return setMessage("Платёж не найден. Откройте историю заказов.");
-    if (!webApp?.initData)
+    if (!account || authLoading)
       return setMessage(
-        "Вернитесь в магазин через Telegram. Мы проверим оплату автоматически — повторно платить не нужно.",
+        "Войдите в аккаунт, в котором начали оплату. Повторно платить не нужно.",
       );
     setBusy(true);
     try {
       const data = await shopRequest<PaymentCheck>("/api/payments", {
         action: "status",
         paymentId,
-        initData: webApp.initData,
+        initData: webApp?.initData,
       });
       if (data.status === "pending")
         setMessage("Оплата ещё обрабатывается. Подождите и проверьте снова.");
@@ -62,12 +64,12 @@ export function PaymentReturn() {
   };
   useEffect(() => {
     void check();
-  }, [paymentId, webApp]);
+  }, [paymentId, webApp, account?.id, authLoading]);
   return (
     <div className="app-container px-4 pt-8">
       <h1 className="text-xl font-bold mb-4">Оплата</h1>
       <p className="text-sm mb-4">{message}</p>
-      {webApp?.initData ? (
+      {account ? (
         <button
           disabled={busy}
           onClick={() => void check()}
@@ -76,9 +78,19 @@ export function PaymentReturn() {
           Проверить оплату
         </button>
       ) : (
-        <a href="https://t.me/timurshopik_bot" className="btn-primary">
-          Вернуться в Telegram
-        </a>
+        <button
+          onClick={() =>
+            navigate(
+              "/auth?next=" +
+                encodeURIComponent(
+                  "/payment-return?payment=" + (paymentId || ""),
+                ),
+            )
+          }
+          className="btn-primary"
+        >
+          Войти в аккаунт
+        </button>
       )}
       <button
         onClick={() => navigate("/profile")}

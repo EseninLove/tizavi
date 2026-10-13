@@ -1,3 +1,5 @@
+import customerAuth from "./_routes/customer-auth.js";
+import emailSettings from "./_routes/email-settings.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import admins from "./_routes/admins/index.js";
 import adminAuth from "./_routes/admin-auth.js";
@@ -22,6 +24,8 @@ const routes: Record<
   string,
   (req: VercelRequest, res: VercelResponse) => unknown
 > = {
+  "customer-auth": customerAuth,
+  "email-settings": emailSettings,
   admins,
   "admin-auth": adminAuth,
   categories,
@@ -53,11 +57,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     return await routes[route](req, res);
   } catch {
-    return res
-      .status(503)
-      .json({
-        ok: false,
-        error: "Сервис временно недоступен. Повторите попытку.",
-      });
+    return res.status(503).json({
+      ok: false,
+      error: "Сервис временно недоступен. Повторите попытку.",
+    });
   }
 }

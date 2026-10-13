@@ -1,3 +1,4 @@
+import { useAuth } from "../context/AuthContext";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProducts } from "../context/ProductsContext";
@@ -18,6 +19,7 @@ const initial = () => {
   }
 };
 export function Catalog() {
+  const { user: account, miniApp, loading: authLoading } = useAuth();
   const { products, categories, loading, error, reload } = useProducts(),
     { active, loading: subLoading } = useSubscription(),
     { cartCount, cartTotal } = useApp(),
@@ -137,6 +139,22 @@ export function Catalog() {
   return (
     <div className="app-container">
       <header className="sticky top-0 z-40 bg-tg-secondary-bg/95 backdrop-blur-lg px-4 pt-3 pb-3 space-y-2">
+        {!miniApp && (
+          <div className="flex items-center justify-between">
+            <strong className="text-sm">Tizavi</strong>
+            <button
+              disabled={authLoading}
+              className="text-xs px-3 py-2 rounded-xl bg-tg-section-bg"
+              onClick={() => navigate(account ? "/profile" : "/auth")}
+            >
+              {authLoading
+                ? "Загрузка…"
+                : account
+                  ? "Мой профиль"
+                  : "Вход / Регистрация"}
+            </button>
+          </div>
+        )}
         <DeliveryAddress />
         <div className="flex items-center gap-2">
           <button

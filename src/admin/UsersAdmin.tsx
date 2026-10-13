@@ -5,7 +5,8 @@ import { formatPrice, formatDate } from "../utils/format";
 
 interface UserRow {
   id: number;
-  telegram_id: number;
+  telegram_id: number | null;
+  email?: string | null;
   username: string | null;
   first_name: string | null;
   last_name: string | null;
@@ -31,7 +32,13 @@ export function UsersAdmin() {
   }, []);
 
   const filtered = users.filter((u) =>
-    [u.first_name, u.last_name, u.username, String(u.telegram_id)]
+    [
+      u.first_name,
+      u.last_name,
+      u.username,
+      u.email,
+      String(u.telegram_id || ""),
+    ]
       .join(" ")
       .toLowerCase()
       .includes(search.trim().toLowerCase()),
@@ -98,6 +105,11 @@ export function UsersAdmin() {
                               .filter(Boolean)
                               .join(" ") || "Без имени"}
                           </div>
+                          {u.email && (
+                            <div className="text-xs text-gray-400">
+                              {u.email}
+                            </div>
+                          )}
                           {u.username && (
                             <div className="text-xs text-gray-400">
                               @{u.username}
@@ -107,7 +119,7 @@ export function UsersAdmin() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
-                      {u.telegram_id}
+                      {u.telegram_id || "Email"}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 font-medium">
                       {u.orders_count || 0}
@@ -143,6 +155,9 @@ export function UsersAdmin() {
                     {[u.first_name, u.last_name].filter(Boolean).join(" ") ||
                       "Без имени"}
                   </div>
+                  {u.email && (
+                    <div className="text-xs text-gray-400">{u.email}</div>
+                  )}
                   {u.username && (
                     <div className="text-xs text-gray-400">@{u.username}</div>
                   )}

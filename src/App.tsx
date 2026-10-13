@@ -1,3 +1,4 @@
+import { Auth } from "./pages/Auth";
 import { PaymentMonitor } from "./components/PaymentMonitor";
 import { PaymentReturn } from "./pages/PaymentReturn";
 import { lazy, Suspense } from "react";
@@ -26,7 +27,7 @@ export default function App() {
   const isAdmin = location.pathname.startsWith("/admin");
   const hideBottomNav =
     isAdmin ||
-    ["/checkout", "/order-success", "/payment-return"].some((p) =>
+    ["/auth", "/checkout", "/order-success", "/payment-return"].some((p) =>
       location.pathname.startsWith(p),
     );
 
@@ -42,6 +43,7 @@ export default function App() {
             </Suspense>
           }
         />
+        <Route path="/auth" element={<Auth />} />
         <Route path="/" element={<Catalog />} />
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/cart" element={<Cart />} />

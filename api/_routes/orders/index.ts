@@ -1,11 +1,8 @@
+import { requireCustomer } from "../../_customer-auth.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import crypto from "node:crypto";
 import { sql, pool } from "../../_db.js";
-import {
-  authenticateAdmin,
-  validateInitData,
-  upsertUser,
-} from "../../_helpers.js";
+import { authenticateAdmin } from "../../_helpers.js";
 import { hasActiveSubscription } from "../../_subscription.js";
 import { ensureCommerceSchema } from "../../_schema.js";
 import {
@@ -19,12 +16,9 @@ import { quoteAddress } from "../../_delivery.js";
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === "POST") {
-      const { initData, items, delivery, requestKey } = req.body || {};
-      const { valid, userId } = validateInitData(initData || "");
-      if (!valid || !userId)
-        return res
-          .status(401)
-          .json({ ok: false, error: "Откройте магазин в Telegram" });
+      const { items, delivery, requestKey } = req.body || {};
+      const customer = await requireCustomer(req),
+        userId = Number(customer.id);
       if (!(await hasActiveSubscription(userId)))
         return res.status(403).json({
           ok: false,
@@ -44,13 +38,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
         throw new ShopError("Слишком длинные контактные данные");
       await ensureCommerceSchema();
-      await upsertUser(initData, userId);
       const fingerprint = crypto
         .createHash("sha256")
         .update(JSON.stringify({ items, delivery }))
         .digest("hex");
       const existing = (
-        await sql`SELECT * FROM orders WHERE telegram_user_id=${userId} AND request_key=${requestKey}`
+        await sql`SELECT * FROM orders WHERE user_id=${userId} AND request_key=${requestKey}`
       ).rows[0];
       if (existing) {
         if (existing.request_fingerprint !== fingerprint)
@@ -85,7 +78,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
       const feeMinor = Math.round(quote.fee * 100);
       const result =
-        await sql`INSERT INTO orders(order_number,items,total,delivery_fee,payable_total,delivery,payment_method,status,payment_status,telegram_user_id,customer_name,customer_phone,request_key,request_fingerprint) VALUES(${"ORD-" + crypto.randomUUID().slice(0, 8).toUpperCase()},${JSON.stringify(priced.items)}::jsonb,${priced.subtotalMinor / 100},${feeMinor / 100},${(priced.subtotalMinor + feeMinor) / 100},${JSON.stringify(verifiedDelivery)}::jsonb,'aggregator','pending','pending',${userId},${verifiedDelivery.name},${verifiedDelivery.phone},${requestKey},${fingerprint}) ON CONFLICT(telegram_user_id,request_key) DO UPDATE SET request_key=EXCLUDED.request_key RETURNING *`;
+        await sql`INSERT INTO orders(order_number,items,total,delivery_fee,payable_total,delivery,payment_method,status,payment_status,user_id,telegram_user_id,customer_name,customer_phone,request_key,request_fingerprint) VALUES(${"ORD-" + crypto.randomUUID().slice(0, 8).toUpperCase()},${JSON.stringify(priced.items)}::jsonb,${priced.subtotalMinor / 100},${feeMinor / 100},${(priced.subtotalMinor + feeMinor) / 100},${JSON.stringify(verifiedDelivery)}::jsonb,'aggregator','pending','pending',${userId},${customer.telegram_id},${verifiedDelivery.name},${verifiedDelivery.phone},${requestKey},${fingerprint}) ON CONFLICT(user_id,request_key) DO UPDATE SET request_key=EXCLUDED.request_key RETURNING *`;
       if (result.rows[0].request_fingerprint !== fingerprint)
         throw new ShopError("Состав заказа изменился", 409);
       return res

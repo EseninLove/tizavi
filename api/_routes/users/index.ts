@@ -1,3 +1,4 @@
+import { ensureCommerceSchema } from "../../_schema.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import {
   sql,
@@ -15,8 +16,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!authorized) return unauthorized(res);
 
   try {
+    await ensureCommerceSchema();
     const result = await sql`
-      SELECT id, telegram_id, username, first_name, last_name, photo_url,
+      SELECT id, telegram_id, email, email_verified, username, first_name, last_name, photo_url,
              orders_count, total_spent, created_at, last_seen
       FROM users
       ORDER BY last_seen DESC

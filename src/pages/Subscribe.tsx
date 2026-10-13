@@ -1,3 +1,4 @@
+import { useAuth } from "../context/AuthContext";
 import { shopRequest, openPayment, type PaymentResult } from "../lib/api";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -6,6 +7,7 @@ import { useTelegram } from "../lib/telegram";
 import { formatDate, formatPrice } from "../utils/format";
 
 export function Subscribe() {
+  const { user: account, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { active, expiresAt, priceRub, days, loading } = useSubscription();
   const { haptic, webApp } = useTelegram();
@@ -15,8 +17,8 @@ export function Subscribe() {
   const handleBuy = async () => {
     if (buying) return;
     const initData = webApp?.initData;
-    if (!initData || !webApp) {
-      setError("Оплата доступна только внутри Telegram");
+    if (!account || authLoading) {
+      navigate("/auth?next=/subscribe");
       return;
     }
 
@@ -35,7 +37,7 @@ export function Subscribe() {
         action: "invoice",
         requestKey,
       });
-      openPayment(payment, webApp.openLink?.bind(webApp));
+      openPayment(payment, webApp?.openLink?.bind(webApp));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось открыть оплату");
     } finally {

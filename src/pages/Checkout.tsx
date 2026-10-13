@@ -1,3 +1,4 @@
+import { useAuth } from "../context/AuthContext";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
@@ -10,20 +11,24 @@ import { DeliveryAddress, deliveryWindow } from "../components/DeliveryAddress";
 import { EmptyState } from "../components/EmptyState";
 import type { Order } from "../types";
 export function Checkout() {
+  const { user: account, loading: authLoading } = useAuth();
   const navigate = useNavigate(),
     { cart, cartTotal, placeOrder } = useApp(),
     { quote } = useDelivery(),
     { active, loading } = useSubscription(),
     { user, webApp } = useTelegram();
-  const [name, setName] = useState(user?.first_name || ""),
+  const [name, setName] = useState(
+      account?.firstName || user?.first_name || "",
+    ),
     [phone, setPhone] = useState(""),
     [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [draft, setDraft] = useState<Order | null>(null);
   useEffect(() => {
-    if (user?.first_name) setName((n) => n || user.first_name);
-  }, [user]);
+    if (account?.firstName) setName((n) => n || account.firstName);
+    else if (user?.first_name) setName((n) => n || user.first_name);
+  }, [user, account?.firstName]);
   useEffect(() => setDraft(null), [cart, name, phone, comment, quote]);
   const valid = !!quote && !!name.trim() && /^\+?[\d\s()-]{10,25}$/.test(phone);
   const submit = async () => {
@@ -83,6 +88,20 @@ export function Checkout() {
     );
   if (loading)
     return <div className="app-container p-4">Проверяем подписку…</div>;
+  if (authLoading)
+    return <div className="app-container p-6">Проверяем аккаунт…</div>;
+  if (!account)
+    return (
+      <div className="app-container">
+        <EmptyState
+          icon="👤"
+          title="Войдите для оформления"
+          description="Зарегистрируйтесь по email или войдите в существующий аккаунт"
+          actionLabel="Войти / Регистрация"
+          onAction={() => navigate("/auth?next=/checkout")}
+        />
+      </div>
+    );
   if (!active)
     return (
       <div className="app-container">

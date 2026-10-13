@@ -19,15 +19,22 @@ async function migrate() {
     await client.query(
       "CREATE TABLE IF NOT EXISTS shop_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT NOW())",
     );
-    const found = await client.query(
-      "SELECT 1 FROM shop_migrations WHERE version='002-commerce'",
-    );
-    if (!found.rowCount) {
-      const file = path.join(process.cwd(), "db", "002-commerce.sql");
-      await client.query(fs.readFileSync(file, "utf8"));
-      await client.query(
-        "INSERT INTO shop_migrations(version) VALUES('002-commerce')",
+    for (const version of ["002-commerce", "003-accounts"]) {
+      const found = await client.query(
+        "SELECT 1 FROM shop_migrations WHERE version=$1",
+        [version],
       );
+      if (!found.rowCount) {
+        await client.query(
+          fs.readFileSync(
+            path.join(process.cwd(), "db", version + ".sql"),
+            "utf8",
+          ),
+        );
+        await client.query("INSERT INTO shop_migrations(version) VALUES($1)", [
+          version,
+        ]);
+      }
     }
     await client.query("COMMIT");
   } catch (error) {

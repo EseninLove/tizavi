@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { authApi } from "./api";
 import { useState } from "react";
 import { seedApi } from "./api";
 
@@ -40,6 +42,18 @@ export function Settings() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">Настройки</h1>
 
+      {authApi.role() === "super_admin" && (
+        <section className="admin-card">
+          <h2>Почтовый сервис</h2>
+          <p className="admin-hint mb-4">
+            Регистрация по email работает без подтверждения. Отправка писем пока
+            отключена.
+          </p>
+          <Link className="admin-primary" to="/admin/email">
+            Настроить подключение почтового сервиса
+          </Link>
+        </section>
+      )}
       <details className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
         <summary className="font-semibold cursor-pointer">
           Первоначальная настройка магазина

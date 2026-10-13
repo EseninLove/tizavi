@@ -4,6 +4,8 @@ export async function shopRequest<T>(path: string, body: unknown): Promise<T> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+  if (response.status === 401 && !(body as { initData?: string })?.initData)
+    window.dispatchEvent(new Event("tizavi-customer-expired"));
   const data = await response.json();
   if (!response.ok || !data.ok)
     throw new Error(data.error || "Не удалось выполнить запрос");

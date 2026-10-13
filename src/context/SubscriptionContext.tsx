@@ -1,3 +1,4 @@
+import { useAuth } from "./AuthContext";
 import {
   createContext,
   useCallback,
@@ -5,9 +6,10 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
   type ReactNode,
-} from 'react';
-import { useTelegram } from '../lib/telegram';
+} from "react";
+import { useTelegram } from "../lib/telegram";
 
 interface SubscriptionContextValue {
   active: boolean;
@@ -19,9 +21,13 @@ interface SubscriptionContextValue {
   refresh: () => Promise<void>;
 }
 
-const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
+const SubscriptionContext = createContext<SubscriptionContextValue | null>(
+  null,
+);
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
+  const sequence = useRef(0);
   const { webApp } = useTelegram();
   const [active, setActive] = useState(false);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
@@ -31,20 +37,24 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [checked, setChecked] = useState(false);
 
   const refresh = useCallback(async () => {
+    const turn = ++sequence.current;
     const initData = webApp?.initData;
-    if (!initData) {
+    setActive(false);
+    setExpiresAt(null);
+    if (!user || authLoading) {
       setLoading(false);
       setChecked(true);
       return;
     }
     setLoading(true);
     try {
-      const res = await fetch('/api/subscription', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ initData }),
       });
       const data = await res.json();
+      if (turn !== sequence.current) return;
       if (data.ok) {
         setActive(!!data.active);
         setExpiresAt(data.expiresAt || null);
@@ -53,12 +63,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       }
     } catch {
       // статус неизвестен — считаем неактивной
-      setActive(false);
+      if (turn === sequence.current) setActive(false);
     } finally {
-      setLoading(false);
-      setChecked(true);
+      if (turn === sequence.current) {
+        setLoading(false);
+        setChecked(true);
+      }
     }
-  }, [webApp]);
+  }, [webApp, user?.id, authLoading]);
 
   useEffect(() => {
     refresh();
@@ -66,14 +78,19 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<SubscriptionContextValue>(
     () => ({ active, expiresAt, priceRub, days, loading, checked, refresh }),
-    [active, expiresAt, priceRub, days, loading, checked, refresh]
+    [active, expiresAt, priceRub, days, loading, checked, refresh],
   );
 
-  return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;
+  return (
+    <SubscriptionContext.Provider value={value}>
+      {children}
+    </SubscriptionContext.Provider>
+  );
 }
 
 export function useSubscription(): SubscriptionContextValue {
   const ctx = useContext(SubscriptionContext);
-  if (!ctx) throw new Error('useSubscription must be used within SubscriptionProvider');
+  if (!ctx)
+    throw new Error("useSubscription must be used within SubscriptionProvider");
   return ctx;
 }

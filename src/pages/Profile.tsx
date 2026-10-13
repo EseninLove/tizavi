@@ -1,8 +1,8 @@
+import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import { useTheme, type Theme } from "../context/ThemeContext";
-import { useTelegram } from "../lib/telegram";
 import { formatPrice, formatDate } from "../utils/format";
 import { EmptyState } from "../components/EmptyState";
 import { orderStatusLabel, paymentStatusLabels } from "../utils/orders";
@@ -11,7 +11,17 @@ import { useState } from "react";
 
 export function Profile() {
   const navigate = useNavigate();
-  const { user } = useTelegram();
+  const { user: account, loading: authLoading, logout, miniApp } = useAuth();
+  const [authError, setAuthError] = useState("");
+  const user = account
+    ? {
+        first_name: account.firstName || account.name,
+        last_name: "",
+        photo_url: account.photoUrl,
+        username: account.username,
+        language_code: "",
+      }
+    : null;
   const {
     orders,
     wishlist,
@@ -94,6 +104,69 @@ export function Profile() {
           </div>
         </section>
 
+        {!account && !authLoading && (
+          <section className="section-card p-4 space-y-3">
+            <h2 className="font-bold">Войдите в аккаунт</h2>
+            <p className="text-sm text-tg-hint">
+              Сохраняйте историю покупок и управляйте подпиской.
+            </p>
+            <button
+              className="btn-primary w-full"
+              onClick={() => navigate("/auth")}
+            >
+              Войти или зарегистрироваться
+            </button>
+          </section>
+        )}
+        {account && (
+          <section className="section-card p-4 space-y-3">
+            <h2 className="font-bold">Вход в аккаунт</h2>
+            {account.email ? (
+              <>
+                <p className="text-sm">{account.email}</p>
+                <p className="text-xs text-tg-hint">
+                  Подтверждение email пока не требуется.
+                </p>
+                <button
+                  className="btn-secondary w-full text-sm"
+                  onClick={() => navigate("/auth?mode=password")}
+                >
+                  Изменить пароль
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-tg-hint">
+                  Добавьте email и пароль, чтобы открывать этот профиль и
+                  историю Telegram в браузере.
+                </p>
+                <button
+                  className="btn-secondary w-full text-sm"
+                  onClick={() => navigate("/auth?mode=attach")}
+                >
+                  Добавить email и пароль
+                </button>
+              </>
+            )}
+            {!miniApp && (
+              <button
+                className="text-sm text-tg-link w-full py-2"
+                onClick={() =>
+                  void logout()
+                    .then(() => navigate("/auth"))
+                    .catch((e) => setAuthError(e.message))
+                }
+              >
+                Выйти из аккаунта
+              </button>
+            )}
+            {authError && (
+              <p role="alert" className="text-sm text-red-400">
+                {authError}
+              </p>
+            )}
+          </section>
+        )}
         <section
           className={`section-card p-4 flex items-center gap-3 ${
             subscribed ? "border-2 border-green-500" : ""

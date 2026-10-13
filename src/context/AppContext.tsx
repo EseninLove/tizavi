@@ -1,3 +1,4 @@
+import { useAuth } from "./AuthContext";
 import {
   createContext,
   useCallback,
@@ -5,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
   type ReactNode,
 } from "react";
 import type {
@@ -50,6 +52,9 @@ function load<T>(key: string, fallback: T): T {
   }
 }
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { user: account, loading: authLoading } = useAuth();
+  const currentAccount = useRef(account?.id);
+  currentAccount.current = account?.id;
   const { webApp, haptic } = useTelegram();
   const [cart, setCart] = useState<CartItem[]>(() => load(CART_KEY, []));
   const [wishlist, setWishlist] = useState<string[]>(() =>
@@ -64,14 +69,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [wishlist],
   );
   const refreshOrders = useCallback(async () => {
-    if (!webApp?.initData) return [];
+    if (!account || authLoading) {
+      setOrders([]);
+      setOrdersError("");
+      return [];
+    }
     setOrdersLoading(true);
     setOrdersError("");
     try {
       const data = await shopRequest<{ ok: boolean; orders: Order[] }>(
         "/api/my-orders",
-        { initData: webApp.initData },
+        { initData: webApp?.initData },
       );
+      if (currentAccount.current !== account.id)
+        throw new Error("Аккаунт изменился");
       setOrders(data.orders);
       return data.orders;
     } catch (error) {
@@ -82,8 +93,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       setOrdersLoading(false);
     }
-  }, [webApp]);
+  }, [webApp, account?.id, authLoading]);
   useEffect(() => {
+    setOrders([]);
     void refreshOrders().catch(() => {});
   }, [refreshOrders]);
   useEffect(() => {
@@ -134,7 +146,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const settleOrder = useCallback(
     (order: Order) => {
       if (order.paymentStatus !== "succeeded") return;
-      const key = `tizavi_settled_${webApp?.initDataUnsafe.user?.id || "guest"}`;
+      const key = `tizavi_settled_${account?.id || "guest"}`;
       const settled = load<string[]>(key, []);
       if (settled.includes(order.id)) return;
       setCart((prev) =>
@@ -159,13 +171,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
       setOrders((prev) => [order, ...prev.filter((i) => i.id !== order.id)]);
     },
-    [webApp],
+    [account?.id],
   );
   const placeOrder = async (
     delivery: OrderDelivery,
     _method: PaymentMethod,
   ) => {
-    if (!webApp?.initData) throw new Error("Откройте магазин в Telegram");
+    if (!account) throw new Error("Войдите в аккаунт, чтобы оформить заказ");
     const items = cart.map((i) => ({
       productId: i.product.id,
       quantity: i.quantity,
@@ -183,7 +195,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
     const data = await shopRequest<{ ok: boolean; order: Order }>(
       "/api/orders",
-      { initData: webApp.initData, items, delivery, requestKey },
+      { initData: webApp?.initData, items, delivery, requestKey },
     );
     setOrders((prev) => [
       data.order,

@@ -30,7 +30,7 @@ export async function createPayment(
     if (kind === "order") {
       order = (
         await client.query(
-          "SELECT * FROM orders WHERE order_number=$1 AND telegram_user_id=$2 FOR UPDATE",
+          "SELECT * FROM orders WHERE order_number=$1 AND user_id=$2 FOR UPDATE",
           [orderNumber, userId],
         )
       ).rows[0];
@@ -62,14 +62,11 @@ export async function createPayment(
       await client.query(
         kind === "order"
           ? "SELECT * FROM payments WHERE order_id=$1 AND status!='canceled' FOR UPDATE"
-          : "SELECT * FROM payments WHERE telegram_id=$1 AND request_key=$2 FOR UPDATE",
+          : "SELECT * FROM payments WHERE user_id=$1 AND request_key=$2 FOR UPDATE",
         kind === "order" ? [order!.id] : [userId, requestKey],
       )
     ).rows[0];
-    if (
-      intent &&
-      (intent.kind !== kind || Number(intent.telegram_id) !== userId)
-    )
+    if (intent && (intent.kind !== kind || Number(intent.user_id) !== userId))
       throw new ShopError("Некорректная оплата");
     if (!intent) {
       const amount =
@@ -80,7 +77,7 @@ export async function createPayment(
         throw new ShopError("Некорректная сумма");
       intent = (
         await client.query(
-          "INSERT INTO payments(id,telegram_id,kind,order_id,request_key,amount_minor,subscription_days,provider_name) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *",
+          "INSERT INTO payments(id,user_id,kind,order_id,request_key,amount_minor,subscription_days,provider_name) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *",
           [
             crypto.randomUUID(),
             userId,
@@ -151,10 +148,7 @@ export async function reconcilePayment(id: string, userId?: number) {
   await ensureCommerceSchema();
   const result = await sql`SELECT * FROM payments WHERE id=${id}`;
   const intent = result.rows[0] as Record<string, any> | undefined;
-  if (
-    !intent ||
-    (userId !== undefined && Number(intent.telegram_id) !== userId)
-  )
+  if (!intent || (userId !== undefined && Number(intent.user_id) !== userId))
     throw new ShopError("Платёж не найден", 404);
   if (!intent.provider_id)
     return { status: "pending", kind: intent.kind, orderNumber: null };
@@ -175,7 +169,7 @@ export async function reconcilePayment(id: string, userId?: number) {
     await client.query("BEGIN");
     // Serializes extension of a subscription across different successful payment IDs.
     await client.query("SELECT pg_advisory_xact_lock($1)", [
-      Number(intent.telegram_id),
+      Number(intent.user_id),
     ]);
     const locked = (
       await client.query("SELECT * FROM payments WHERE id=$1 FOR UPDATE", [id])
@@ -199,8 +193,8 @@ export async function reconcilePayment(id: string, userId?: number) {
           [order.id],
         );
         await client.query(
-          "UPDATE users SET orders_count=COALESCE(orders_count,0)+1,total_spent=COALESCE(total_spent,0)+$1 WHERE telegram_id=$2",
-          [Number(order.total), intent.telegram_id],
+          "UPDATE users SET orders_count=COALESCE(orders_count,0)+1,total_spent=COALESCE(total_spent,0)+$1 WHERE id=$2",
+          [Number(order.total), intent.user_id],
         );
       } else if (status === "canceled" && !locked.applied_at) {
         await client.query(
@@ -212,8 +206,8 @@ export async function reconcilePayment(id: string, userId?: number) {
       }
     } else if (status === "succeeded" && !locked.applied_at) {
       await client.query(
-        `INSERT INTO subscriptions(telegram_id,expires_at,payment_method) VALUES($1,NOW()+$2*INTERVAL '1 day','aggregator') ON CONFLICT(telegram_id) DO UPDATE SET expires_at=GREATEST(subscriptions.expires_at,NOW())+$2*INTERVAL '1 day',payment_method='aggregator',updated_at=NOW()`,
-        [intent.telegram_id, Number(locked.subscription_days)],
+        `INSERT INTO subscriptions(user_id,expires_at,payment_method) VALUES($1,NOW()+$2*INTERVAL '1 day','aggregator') ON CONFLICT(user_id) DO UPDATE SET expires_at=GREATEST(subscriptions.expires_at,NOW())+$2*INTERVAL '1 day',payment_method='aggregator',updated_at=NOW()`,
+        [intent.user_id, Number(locked.subscription_days)],
       );
     }
     if (!locked.applied_at)

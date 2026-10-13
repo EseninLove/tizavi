@@ -1,13 +1,6 @@
+import { requireCustomer } from "../_customer-auth.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import {
-  sql,
-  authenticateAdmin,
-  validateInitData,
-  parseInitDataUser,
-  upsertUser,
-  sendJSON,
-  unauthorized,
-} from "../_helpers.js";
+import { sql, authenticateAdmin, sendJSON, unauthorized } from "../_helpers.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN || "";
 
@@ -59,31 +52,29 @@ async function notifyAdmins(ticket: {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // POST /api/support — создать тикет (пользователь) или получить свои тикеты (action: 'my')
   if (req.method === "POST") {
-    const { initData, subject, message, action } = (req.body || {}) as {
+    const { subject, message, action } = (req.body || {}) as {
       initData?: string;
       subject?: string;
       message?: string;
       action?: "my";
     };
 
-    if (!initData) {
-      return sendJSON(res, 400, { ok: false, error: "initData обязателен" });
-    }
-
-    const { valid, userId } = validateInitData(initData);
-    if (!valid || !userId) {
+    let customer;
+    try {
+      customer = await requireCustomer(req);
+    } catch (e) {
       return sendJSON(res, 401, {
         ok: false,
-        error: "Невалидные данные Telegram",
+        error: "Войдите в аккаунт, чтобы написать в поддержку",
       });
     }
-
+    const userId = Number(customer.id);
     if (action === "my") {
       try {
         const result = await sql`
           SELECT id, subject, message, reply, status, created_at
           FROM support_tickets
-          WHERE telegram_id = ${userId}
+          WHERE user_id = ${userId}
           ORDER BY created_at DESC
           LIMIT 30
         `;
@@ -100,17 +91,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    await upsertUser(initData, userId);
-
-    const user = parseInitDataUser(initData);
     const userName =
-      [user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
+      [customer.first_name, customer.last_name].filter(Boolean).join(" ") ||
+      customer.email ||
       "Пользователь";
-
+    if (subject.length > 150 || message.length > 3500)
+      return sendJSON(res, 400, {
+        ok: false,
+        error: "Сообщение слишком длинное",
+      });
     try {
       const result = await sql`
-        INSERT INTO support_tickets (telegram_id, username, user_name, subject, message, status)
-        VALUES (${userId}, ${user?.username ?? null}, ${userName}, ${subject.trim()}, ${message.trim()}, 'open')
+        INSERT INTO support_tickets (user_id, telegram_id, username, user_name, subject, message, status)
+        VALUES (${userId}, ${customer.telegram_id}, ${customer.username ?? null}, ${userName}, ${subject.trim()}, ${message.trim()}, 'open')
         RETURNING id, created_at
       `;
       const row = result.rows[0] as { id: number; created_at: string };
@@ -118,8 +111,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await notifyAdmins({
         id: row.id,
         userName,
-        username: user?.username ?? null,
-        telegramId: userId,
+        username: customer.username ?? null,
+        telegramId: customer.telegram_id ? Number(customer.telegram_id) : 0,
         subject: subject.trim(),
         message: message.trim(),
       });

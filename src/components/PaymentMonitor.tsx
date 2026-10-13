@@ -1,3 +1,4 @@
+import { useAuth } from "../context/AuthContext";
 import { useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
@@ -5,18 +6,19 @@ import { useSubscription } from "../context/SubscriptionContext";
 import { useTelegram } from "../lib/telegram";
 import { PENDING_PAYMENT, shopRequest, type PaymentCheck } from "../lib/api";
 export function PaymentMonitor() {
+  const { user: account, loading: authLoading } = useAuth();
   const { webApp } = useTelegram(),
     { refreshOrders, settleOrder } = useApp(),
     { refresh } = useSubscription();
   const navigate = useNavigate();
   const check = useCallback(async () => {
     const paymentId = localStorage.getItem(PENDING_PAYMENT);
-    if (!paymentId || !webApp?.initData) return;
+    if (!paymentId || !account || authLoading) return;
     try {
       const result = await shopRequest<PaymentCheck>("/api/payments", {
         action: "status",
         paymentId,
-        initData: webApp.initData,
+        initData: webApp?.initData,
       });
       if (result.status === "pending") return;
       if (result.status === "succeeded") {
@@ -39,7 +41,15 @@ export function PaymentMonitor() {
     } catch {
       /* Retain the payment ID and basket until the server can confirm the payment. */
     }
-  }, [webApp, refreshOrders, settleOrder, refresh, navigate]);
+  }, [
+    webApp,
+    account?.id,
+    authLoading,
+    refreshOrders,
+    settleOrder,
+    refresh,
+    navigate,
+  ]);
   useEffect(() => {
     void check();
     const interval = window.setInterval(() => {

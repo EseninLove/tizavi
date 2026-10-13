@@ -15,7 +15,7 @@ const STATUS_FLOW = ["open", "in_progress", "resolved", "closed"];
 
 interface TicketRow {
   id: number;
-  telegram_id: number;
+  telegram_id: number | null;
   username: string | null;
   user_name: string | null;
   subject: string;
@@ -224,7 +224,8 @@ export function SupportAdmin() {
 
               <div>
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                  Ответ (будет отправлен пользователю в Telegram)
+                  Ответ (сохраняется в магазине; для Telegram также отправляется
+                  ботом)
                 </h3>
                 <div className="admin-template-list mb-3">
                   {[
