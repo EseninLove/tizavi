@@ -6,30 +6,13 @@ const BOT_TOKEN = process.env.BOT_TOKEN || "";
 
 const VALID_STATUSES = ["open", "in_progress", "resolved", "closed"];
 
-async function notifyAdmins(ticket: {
-  id: number;
-  userName: string;
-  username: string | null;
-  telegramId: number;
-  subject: string;
-  message: string;
-}): Promise<void> {
+async function notifyAdmins(): Promise<void> {
   if (!BOT_TOKEN) return;
 
   try {
     const admins = await sql`SELECT telegram_id FROM admins`;
-    const nameLine = ticket.username
-      ? `@${ticket.username}`
-      : `ID: ${ticket.telegramId}`;
-    const text = [
-      "🎧 Новая заявка в поддержку",
-      "",
-      `№${ticket.id} · ${ticket.subject}`,
-      "",
-      ticket.message.slice(0, 3000),
-      "",
-      `От: ${ticket.userName} (${nameLine})`,
-    ].join("\n");
+    const text =
+      "В магазине новое обращение в поддержку. Подробности доступны в защищённой админке.";
 
     for (const row of admins.rows) {
       const adminId = (row as { telegram_id: number }).telegram_id;
@@ -50,6 +33,7 @@ async function notifyAdmins(ticket: {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader("Cache-Control", "no-store");
   // POST /api/support — создать тикет (пользователь) или получить свои тикеты (action: 'my')
   if (req.method === "POST") {
     const { subject, message, action } = (req.body || {}) as {
@@ -108,14 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
       const row = result.rows[0] as { id: number; created_at: string };
 
-      await notifyAdmins({
-        id: row.id,
-        userName,
-        username: customer.username ?? null,
-        telegramId: customer.telegram_id ? Number(customer.telegram_id) : 0,
-        subject: subject.trim(),
-        message: message.trim(),
-      });
+      await notifyAdmins();
 
       return sendJSON(res, 201, {
         ok: true,
@@ -126,7 +103,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJSON(res, 500, {
         ok: false,
         error: "Ошибка создания заявки",
-        detail: err instanceof Error ? err.message : String(err),
       });
     }
   }
@@ -200,7 +176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               chat_id: ticketUserId,
-              text: `🎧 Ответ поддержки на заявку №${ticketId}:\n\n${reply.trim().slice(0, 3500)}`,
+              text: "В личном кабинете есть ответ поддержки. Откройте раздел «Поддержка» в магазине.",
             }),
           }).catch(() => {});
         }

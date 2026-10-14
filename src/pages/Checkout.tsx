@@ -1,3 +1,4 @@
+import { PrivacyNotice } from "../components/PrivacyNotice";
 import { useAuth } from "../context/AuthContext";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -208,6 +209,7 @@ export function Checkout() {
               </div>
             )}
           </section>
+          <PrivacyNotice />
           <section className="section-card p-4 text-sm">
             💳 Оплата на защищённой странице платёжного сервиса. Подтверждение
             появится в магазине после проверки платежа.

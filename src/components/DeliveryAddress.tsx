@@ -1,3 +1,4 @@
+import { PrivacyNotice } from "./PrivacyNotice";
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import { useDelivery } from "../context/DeliveryContext";
@@ -126,6 +127,7 @@ export function DeliveryAddress() {
               <p className="text-xs text-tg-hint">
                 Доставка по Москве и Московской области. Введите улицу и дом.
               </p>
+              <PrivacyNotice />
               <input
                 aria-label="Улица и дом"
                 value={query}

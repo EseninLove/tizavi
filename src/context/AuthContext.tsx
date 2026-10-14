@@ -1,3 +1,4 @@
+import { clearPrivate } from "../lib/private-storage";
 import {
   createContext,
   useCallback,
@@ -96,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (!r.ok) throw new Error("Не удалось выйти");
     setUser(null);
+    clearPrivate();
     for (const key of [
       "tizavi_pending_payment",
       "tizavi_subscription_request",

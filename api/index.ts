@@ -1,3 +1,4 @@
+import privacy from "./_routes/privacy.js";
 import customerAuth from "./_routes/customer-auth.js";
 import emailSettings from "./_routes/email-settings.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
@@ -25,6 +26,7 @@ const routes: Record<
   (req: VercelRequest, res: VercelResponse) => unknown
 > = {
   "customer-auth": customerAuth,
+  privacy,
   "email-settings": emailSettings,
   admins,
   "admin-auth": adminAuth,
@@ -54,6 +56,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : "";
   if (!Object.prototype.hasOwnProperty.call(routes, route))
     return res.status(404).json({ ok: false, error: "Раздел не найден" });
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
   try {
     return await routes[route](req, res);
   } catch {

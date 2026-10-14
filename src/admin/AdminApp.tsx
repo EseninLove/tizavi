@@ -1,3 +1,4 @@
+import { PrivacyAdmin } from "./PrivacyAdmin";
 import { EmailSettingsAdmin } from "./EmailSettingsAdmin";
 import { useCallback, useEffect, useState } from "react";
 import { Routes, Route, NavLink, useLocation, Link } from "react-router-dom";
@@ -53,6 +54,12 @@ const groups = [
   {
     label: "Настройки",
     items: [
+      {
+        path: "/admin/privacy",
+        label: "Персональные данные",
+        icon: "shield",
+        owner: true,
+      },
       {
         path: "/admin/email",
         label: "Почтовый сервис",
@@ -223,6 +230,7 @@ export function AdminApp() {
           <Route path="payments" element={<PaymentsAdmin />} />
           <Route path="delivery" element={<DeliveryAdmin />} />
           <Route path="reviews" element={<ReviewsAdmin />} />
+          <Route path="privacy" element={<PrivacyAdmin />} />
           <Route path="settings" element={<Settings />} />
         </Routes>
       </main>

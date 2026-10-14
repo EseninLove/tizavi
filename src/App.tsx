@@ -1,3 +1,5 @@
+import { PrivacyCenter } from "./pages/PrivacyCenter";
+import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { Search } from "./pages/Search";
 import { ProfileSettings } from "./pages/ProfileSettings";
 import { ShopHeader } from "./components/ShopHeader";
@@ -58,6 +60,8 @@ export default function App() {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/order-success/:id" element={<OrderSuccess />} />
         <Route path="/wishlist" element={<Wishlist />} />
+        <Route path="/profile/privacy" element={<PrivacyCenter />} />
+        <Route path="/legal/privacy" element={<PrivacyPolicy />} />
         <Route path="/profile/settings" element={<ProfileSettings />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/payment-return" element={<PaymentReturn />} />

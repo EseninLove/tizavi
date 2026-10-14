@@ -1,3 +1,4 @@
+import { PrivacyNotice } from "../components/PrivacyNotice";
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -164,6 +165,7 @@ export function Auth() {
                 />
               </label>
             )}
+            <PrivacyNotice />
             {error && (
               <p role="alert" className="text-sm text-red-400">
                 {error}

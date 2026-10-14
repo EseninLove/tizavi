@@ -1,3 +1,4 @@
+import { PrivacyNotice } from "./PrivacyNotice";
 import { useEffect, useState } from "react";
 import { useTelegram } from "../lib/telegram";
 import { useApp } from "../context/AppContext";
@@ -97,6 +98,11 @@ export function ProductReviews({ productId }: { productId: string }) {
               ))}
             </select>
           </label>
+          <p className="privacy-notice">
+            Текст отзыва после проверки будет виден посетителям. Не указывайте
+            имена, телефоны, адреса и другие персональные данные.
+          </p>
+          <PrivacyNotice />
           <textarea
             aria-label="Ваш отзыв"
             value={message}
@@ -116,7 +122,7 @@ export function ProductReviews({ productId }: { productId: string }) {
       )}
       {sent && (
         <p role="status" className="text-sm">
-          Спасибо! Отзыв сохранён. Изменённые отзывы проходят проверку.
+          Спасибо! Отзыв сохранён и появится после проверки.
         </p>
       )}
       {error && (

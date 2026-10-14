@@ -242,6 +242,7 @@ export function StorefrontFooter() {
           <Link to="/support">Помощь</Link>
           <Link to="/legal/offer">Оферта</Link>
           <Link to="/legal/privacy">Конфиденциальность</Link>
+          <Link to="/profile/privacy">Персональные данные</Link>
         </div>
         <span>Москва и Московская область</span>
       </footer>

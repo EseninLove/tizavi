@@ -1,3 +1,4 @@
+import { PrivacyNotice } from "../components/PrivacyNotice";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -113,6 +114,7 @@ export function ProfileSettings() {
         <div className="settings-grid">
           <section className="section-card p-5 settings-personal">
             <h2 className="text-base font-semibold mb-4">Личные данные</h2>
+            <PrivacyNotice />
             <form className="space-y-4" onSubmit={(e) => void save(e, "name")}>
               <label className="block text-sm">
                 Имя
@@ -226,6 +228,18 @@ export function ProfileSettings() {
                     : "Добавить email и пароль"}
               </button>
             </form>
+          </section>
+          <section className="section-card p-5 settings-privacy">
+            <h2 className="text-base font-semibold mb-3">
+              Персональные данные
+            </h2>
+            <p className="text-sm text-tg-hint mb-3">
+              Сведения о данных, запрос исправления или удаления, история
+              обращений.
+            </p>
+            <Link to="/profile/privacy" className="text-sm text-tg-link">
+              Открыть раздел →
+            </Link>
           </section>
           <section className="section-card p-5 settings-appearance">
             <h2 className="text-base font-semibold mb-4">Оформление</h2>

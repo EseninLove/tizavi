@@ -1,3 +1,4 @@
+import { readPrivate, writePrivate } from "../lib/private-storage";
 import { useAuth } from "./AuthContext";
 import {
   createContext,
@@ -182,17 +183,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       productId: i.product.id,
       quantity: i.quantity,
     }));
-    const fingerprint = JSON.stringify({ items, delivery });
-    const previous = load<{ fingerprint: string; key: string }>(
+    const fingerprint = Array.from(
+      new Uint8Array(
+        await crypto.subtle.digest(
+          "SHA-256",
+          new TextEncoder().encode(JSON.stringify({ items, delivery })),
+        ),
+      ),
+    )
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const previous = readPrivate<{ fingerprint: string; key: string }>(
       "tizavi_checkout_request",
-      { fingerprint: "", key: "" },
-    );
+    ) || { fingerprint: "", key: "" };
     const requestKey =
       previous.fingerprint === fingerprint ? previous.key : crypto.randomUUID();
-    localStorage.setItem(
-      "tizavi_checkout_request",
-      JSON.stringify({ fingerprint, key: requestKey }),
-    );
+    writePrivate("tizavi_checkout_request", { fingerprint, key: requestKey });
     const data = await shopRequest<{ ok: boolean; order: Order }>(
       "/api/orders",
       { initData: webApp?.initData, items, delivery, requestKey },

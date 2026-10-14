@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sql`SELECT 1 FROM orders o,jsonb_array_elements(o.items) item WHERE o.user_id=${userId} AND o.payment_status='succeeded' AND o.status!='cancelled' AND item->'product'->>'id'=${String(productId)} LIMIT 1`;
     if (!purchase.rows.length)
       throw new ShopError("Оценить товар можно после его покупки", 403);
-    await sql`INSERT INTO product_reviews(product_id,user_id,telegram_id,rating,message) VALUES(${productId},${userId},${customer.telegram_id},${rating},${message}) ON CONFLICT(product_id,user_id) DO UPDATE SET rating=EXCLUDED.rating,message=EXCLUDED.message,visible=FALSE,created_at=NOW()`;
+    await sql`INSERT INTO product_reviews(product_id,user_id,telegram_id,rating,message,visible) VALUES(${productId},${userId},${customer.telegram_id},${rating},${message},FALSE) ON CONFLICT(product_id,user_id) DO UPDATE SET rating=EXCLUDED.rating,message=EXCLUDED.message,visible=FALSE,created_at=NOW()`;
     return res.json({ ok: true });
   } catch (error) {
     return res.status(error instanceof ShopError ? error.status : 503).json({

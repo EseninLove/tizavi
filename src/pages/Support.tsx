@@ -1,3 +1,4 @@
+import { PrivacyNotice } from "../components/PrivacyNotice";
 import { useAuth } from "../context/AuthContext";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -138,6 +139,7 @@ export function Support() {
 
         <div className="support-form section-card p-4 space-y-3">
           <h2 className="text-sm font-semibold text-tg-text">Новая заявка</h2>
+          <PrivacyNotice />
 
           <div>
             <label className="block text-xs text-tg-hint mb-1.5">Тема *</label>

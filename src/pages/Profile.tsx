@@ -94,14 +94,12 @@ export function Profile() {
       .join("")
       .toUpperCase() || "Т";
   const scrollToOrders = () =>
-    document
-      .getElementById("profile-orders")
-      ?.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "auto"
-          : "smooth",
-        block: "start",
-      });
+    document.getElementById("profile-orders")?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+      block: "start",
+    });
 
   return (
     <div className="app-container profile-page profile-studio">
@@ -369,6 +367,9 @@ export function Profile() {
             <p>Вопросы о заказах, доставке или подписке.</p>
           </Link>
           <div className="profile-documents">
+            <Link to="/profile/privacy">
+              Мои персональные данные <span aria-hidden="true">↗</span>
+            </Link>
             {[
               ["offer", "Договор-оферта"],
               ["privacy", "Конфиденциальность"],

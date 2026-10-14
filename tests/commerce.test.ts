@@ -209,11 +209,16 @@ test("database and API payment lifecycle rejects forged activation and applies r
   (pool as any).connect = async () => ({ query, release() {} });
   const originalFetch = globalThis.fetch;
   const remote = new Map<string, any>();
+  const telegramNotifications: string[] = [];
   let remoteCount = 0;
   let forgedAmount = false;
   globalThis.fetch = async (input: any, options: any) => {
     const url = String(input),
       body = options?.body ? JSON.parse(options.body) : {};
+    if (url.startsWith("https://api.telegram.org/")) {
+      telegramNotifications.push(body.text);
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
     if (url.includes("dadata.ru"))
       return new Response(
         JSON.stringify({
@@ -504,6 +509,28 @@ test("database and API payment lifecycle rejects forged activation and applies r
           rating: 5,
           message: "Свежие",
         })
+      ).status,
+      200,
+    );
+    assert.equal(
+      (await call(products, "GET")).body.products.find((p: any) => p.id === 1)
+        .actual_reviews_count,
+      0,
+    );
+    const moderatedReview = (
+      await query(
+        "SELECT id FROM product_reviews WHERE telegram_id=101 AND product_id=1",
+      )
+    ).rows[0];
+    assert.equal(
+      (
+        await call(
+          reviews,
+          "PUT",
+          { id: Number(moderatedReview.id), visible: true },
+          {},
+          true,
+        )
       ).status,
       200,
     );
@@ -901,6 +928,9 @@ test("database and API payment lifecycle rejects forged activation and applies r
     if (oldEncryptionKey === undefined) delete process.env.PAYMENT_SETTINGS_KEY;
     else process.env.PAYMENT_SETTINGS_KEY = oldEncryptionKey;
     const support = (await import("../api/_routes/support")).default;
+    await query(
+      "INSERT INTO admins(telegram_id,role) VALUES(800800,'admin') ON CONFLICT DO NOTHING",
+    );
     const emailTicket = await call(
       support,
       "POST",
@@ -920,6 +950,160 @@ test("database and API payment lifecycle rejects forged activation and applies r
         .tickets.length,
       0,
     );
+    const tgTicket = await call(support, "POST", {
+      initData: init(),
+      subject: "private-test-subject",
+      message: "private-test-message +79990001122",
+    });
+    assert.equal(tgTicket.status, 201);
+    assert.equal(
+      (
+        await call(
+          support,
+          "PUT",
+          { reply: "private-test-reply" },
+          { id: tgTicket.body.ticket.id },
+          true,
+        )
+      ).status,
+      200,
+    );
+    assert.ok(telegramNotifications.length >= 3);
+    for (const text of telegramNotifications) {
+      assert.ok(
+        !/private-test|local test message|Browser support|test@example.com|79990001122|Покупатель/.test(
+          text,
+        ),
+        "Telegram notifications must not include customer details or ticket content",
+      );
+    }
+    const privacy = (await import("../api/_routes/privacy")).default;
+    assert.equal(
+      (await call(privacy, "GET", {}, { admin: "1" }, false, emailHeaders))
+        .status,
+      403,
+    );
+    assert.equal((await call(privacy, "POST", { action: "my" })).status, 401);
+    const privateRequest = await call(
+      privacy,
+      "POST",
+      {
+        action: "create",
+        kind: "deletion",
+        message: "Only my account",
+        user_id: 101,
+      },
+      {},
+      false,
+      emailHeaders,
+    );
+    assert.equal(privateRequest.status, 201);
+    assert.equal(
+      (
+        await call(
+          privacy,
+          "POST",
+          { action: "create", kind: "deletion", message: "Duplicate" },
+          {},
+          false,
+          emailHeaders,
+        )
+      ).status,
+      409,
+    );
+    assert.equal(
+      (await call(privacy, "POST", { action: "my", initData: init() })).body
+        .requests.length,
+      0,
+    );
+    assert.equal(
+      (await call(privacy, "POST", { action: "my" }, {}, false, emailHeaders))
+        .body.requests.length,
+      1,
+    );
+    assert.equal(
+      (
+        await call(
+          privacy,
+          "PUT",
+          {
+            action: "respond",
+            id: Number(privateRequest.body.id),
+            status: "answered",
+            reply: "",
+          },
+          {},
+          true,
+        )
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await call(
+          privacy,
+          "PUT",
+          {
+            action: "respond",
+            id: Number(privateRequest.body.id),
+            status: "answered",
+            reply: "We received your request; no data removed automatically.",
+          },
+          {},
+          true,
+        )
+      ).status,
+      200,
+    );
+    assert.match(
+      (await call(privacy, "POST", { action: "my" }, {}, false, emailHeaders))
+        .body.requests[0].reply,
+      /received/,
+    );
+    assert.equal(
+      (
+        await query(
+          "SELECT 1 FROM users WHERE id=(SELECT user_id FROM privacy_requests WHERE id=$1)",
+          [privateRequest.body.id],
+        )
+      ).rows.length > 0,
+      true,
+      "A deletion request must not delete an account automatically",
+    );
+    assert.equal(
+      Number(
+        (
+          await query(
+            "SELECT COUNT(*) AS count FROM privacy_audit WHERE request_id=$1",
+            [privateRequest.body.id],
+          )
+        ).rows[0].count,
+      ),
+      2,
+    );
+    assert.equal(
+      (
+        await call(
+          privacy,
+          "PUT",
+          {
+            action: "settings",
+            operator_name: "Test operator",
+            inn: "1234567890",
+            address: "Test business address",
+            contact_email: "privacy@example.com",
+            retention: "Test retention",
+            recipients: "Test processors",
+          },
+          {},
+          true,
+        )
+      ).status,
+      200,
+    );
+    const publicPrivacy = await call(privacy, "GET");
+    assert.equal(publicPrivacy.body.operator.operator_name, "Test operator");
+    assert.equal(publicPrivacy.body.requests, undefined);
     const emailReview = await call(
       reviews,
       "POST",
@@ -929,6 +1113,15 @@ test("database and API payment lifecycle rejects forged activation and applies r
       emailHeaders,
     );
     assert.equal(emailReview.status, 200);
+    assert.equal(
+      (
+        await query("SELECT visible FROM product_reviews WHERE message=$1", [
+          "Email purchase review",
+        ])
+      ).rows[0].visible,
+      false,
+      "New reviews must be moderated before public display",
+    );
 
     assert.equal(
       (
