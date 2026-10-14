@@ -1577,3 +1577,301 @@
     transform: none;
   }
 }
+
+/* Search is shared by every storefront page, and only indexes catalogue data. */
+.shop-search {
+  position: relative;
+  min-width: 0;
+}
+.shop-search-desktop {
+  flex: 1;
+  min-width: 140px;
+  max-width: 320px;
+}
+.shop-search-form {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  min-height: 42px;
+  background: var(--tg-bg);
+  border: 1px solid var(--tg-separator);
+  border-radius: 11px;
+}
+.shop-search-form > svg {
+  color: var(--tg-hint);
+  flex-shrink: 0;
+}
+.shop-search-form:focus-within {
+  border-color: var(--tg-hint);
+}
+.shop-search-form input {
+  min-width: 0;
+  width: 100%;
+  outline: none;
+  background: transparent;
+  font-size: 12px;
+  color: var(--tg-text);
+  padding: 11px 0;
+}
+.shop-search-form input::placeholder {
+  color: var(--tg-hint);
+}
+.shop-search-form > button {
+  width: 28px;
+  height: 32px;
+  font-size: 23px;
+  color: var(--tg-hint);
+  flex-shrink: 0;
+}
+.shop-search-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: max(100%, 360px);
+  max-width: calc(100vw - 32px);
+  border: 1px solid var(--tg-separator);
+  background: var(--tg-section-bg);
+  border-radius: 16px;
+  padding: 9px;
+  box-shadow: 0 18px 60px #00000040;
+  z-index: 90;
+}
+.shop-search-results {
+  max-height: min(65dvh, 540px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.shop-search-results h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--tg-hint);
+  padding: 14px 10px 8px;
+  font-weight: 500;
+}
+.shop-search-results h2 > span {
+  font-size: 10px;
+}
+.shop-search-category,
+.shop-search-product {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+.shop-search-category:hover,
+.shop-search-product:hover {
+  background: var(--tg-bg);
+}
+.shop-search-category > span:first-child {
+  font-size: 21px;
+}
+.shop-search-category > span:last-child,
+.shop-search-product > span:last-child {
+  margin-left: auto;
+  color: var(--tg-hint);
+}
+.shop-search-product img {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.shop-search-product > span {
+  min-width: 0;
+}
+.shop-search-product strong {
+  display: block;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.shop-search-product small {
+  display: block;
+  color: var(--tg-hint);
+  font-size: 11px;
+  margin-top: 4px;
+}
+.shop-search-hint {
+  padding: 16px 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--tg-hint);
+}
+.shop-search-hint a {
+  text-decoration: underline;
+}
+.shop-search-all {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 12px;
+  padding: 14px 10px 8px;
+  margin-top: 5px;
+  border-top: 1px solid var(--tg-separator);
+}
+.shop-mobile-header {
+  display: none;
+}
+.shop-search-toggle,
+.shop-mobile-account-link {
+  width: 36px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--tg-separator);
+  border-radius: 10px;
+  background: var(--tg-section-bg);
+  flex-shrink: 0;
+}
+.search-page > header {
+  padding: 24px 16px;
+}
+.search-page h1 {
+  font-size: 26px;
+  font-weight: 600;
+  margin: 10px 0;
+  letter-spacing: -0.7px;
+}
+.search-page > header > p {
+  font-size: 12px;
+  color: var(--tg-hint);
+  overflow-wrap: anywhere;
+}
+.search-page > main {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+.search-page main h2 {
+  font-size: 20px;
+  font-weight: 600;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.search-page main h2 > span {
+  font-size: 11px;
+  color: var(--tg-hint);
+  font-weight: 400;
+}
+.search-category-section {
+  margin-bottom: 32px;
+}
+.search-category-section > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.search-category-section a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--tg-section-bg);
+  border: 1px solid var(--tg-separator);
+  border-radius: 12px;
+  font-size: 13px;
+}
+.search-category-section a > span:last-child {
+  color: var(--tg-hint);
+  margin-left: 10px;
+}
+@media (max-width: 767px) {
+  .shop-mobile-header {
+    position: relative;
+    z-index: 65;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 12px;
+    max-width: 448px;
+    margin: auto;
+  }
+  .shop-mobile-header .brand-wordmark {
+    font-size: 22px;
+  }
+  .shop-mobile-header .shop-categories-link {
+    min-height: 38px;
+    padding: 9px 10px;
+    gap: 6px;
+    font-size: 11px;
+    margin-left: auto;
+  }
+  .shop-search-mobile {
+    position: static;
+    flex-shrink: 0;
+  }
+  .shop-search-mobile .shop-search-dropdown {
+    left: 12px;
+    right: 12px;
+    top: calc(100% - 2px);
+    width: auto;
+    max-width: none;
+  }
+  .shop-search-mobile .shop-search-form {
+    margin-bottom: 6px;
+  }
+  .shop-search-mobile .shop-search-form input {
+    font-size: 16px;
+  }
+  .shop-search-mobile .shop-search-results {
+    max-height: min(60dvh, 480px);
+  }
+  .market-topline {
+    padding-top: 0;
+  }
+}
+@media (min-width: 768px) {
+  .shop-desktop-header-inner {
+    gap: 14px;
+  }
+  .shop-shell .search-page > header {
+    padding: 16px 0 28px;
+  }
+  .search-page > main {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+  .shop-nav-link .shop-nav-label {
+    display: none;
+  }
+  .shop-desktop-header-inner {
+    gap: 10px;
+  }
+  .shop-desktop-header .shop-categories-link {
+    font-size: 11px;
+    padding: 10px;
+    gap: 7px;
+  }
+  .shop-nav-link {
+    padding: 10px;
+  }
+  .shop-login-link {
+    padding: 10px 12px;
+  }
+}
+.shop-shell .shop-search-form input:focus-visible {
+  outline: none;
+}
+@media (max-width: 767px) {
+  .shop-shell {
+    --shop-header-height: 62px;
+  }
+  .shop-mobile-header {
+    position: sticky;
+    top: 0;
+    background: var(--tg-bg);
+  }
+  .shop-shell .app-container > header.sticky {
+    top: var(--shop-header-height);
+  }
+}

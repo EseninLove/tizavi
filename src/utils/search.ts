@@ -1,4 +1,4 @@
-import type { Product } from "../types";
+import type { Product, Category } from "../types";
 export function normalize(value: string) {
   return value
     .toLowerCase()
@@ -30,12 +30,8 @@ export function editDistance(a: string, b: string) {
   }
   return row[b.length];
 }
-export function matchesProduct(product: Product, query: string) {
-  const words = normalize(
-    [product.name, product.description, product.brand, product.synonyms]
-      .filter(Boolean)
-      .join(" "),
-  ).split(" ");
+function matchesText(text: string, query: string) {
+  const words = normalize(text).split(" ");
   return normalize(query)
     .split(" ")
     .filter(Boolean)
@@ -57,4 +53,16 @@ export function matchesProduct(product: Product, query: string) {
         ),
       );
     });
+}
+
+export function matchesProduct(product: Product, query: string) {
+  return matchesText(
+    [product.name, product.description, product.brand, product.synonyms]
+      .filter(Boolean)
+      .join(" "),
+    query,
+  );
+}
+export function matchesCategory(category: Category, query: string) {
+  return category.id !== "all" && matchesText(category.name, query);
 }

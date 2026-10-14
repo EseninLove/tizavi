@@ -1,3 +1,4 @@
+import { ShopSearch } from "./ShopSearch";
 import { CategoriesLink } from "./CategoriesLink";
 import { BrandLogo } from "./BrandLogo";
 import { Link, NavLink } from "react-router-dom";
@@ -19,42 +20,63 @@ export function ShopHeader() {
     { to: "/profile", label: "Профиль", Icon: UserIcon, count: 0 },
   ];
   return (
-    <header className="shop-desktop-header">
-      <div className="shop-desktop-header-inner">
-        <Link to="/" className="shop-brand" aria-label="тизави.рф — в каталог">
+    <>
+      <header className="shop-desktop-header">
+        <div className="shop-desktop-header-inner">
+          <Link
+            to="/"
+            className="shop-brand"
+            aria-label="тизави.рф — в каталог"
+          >
+            <BrandLogo />
+            <span className="shop-brand-tagline">Продукты с доставкой</span>
+          </Link>
+          <CategoriesLink />
+          <ShopSearch />
+          <nav aria-label="Навигация магазина">
+            {links.map(({ to, label, Icon, count }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === "/"}
+                aria-label={
+                  to === "/cart" ? `Корзина, позиций: ${cartCount}` : label
+                }
+                className={({ isActive }) =>
+                  `shop-nav-link ${isActive ? "active" : ""}`
+                }
+              >
+                <Icon className="w-5 h-5" />
+                <span className="shop-nav-label">{label}</span>
+                {(count > 0 || to === "/cart") && (
+                  <span className="shop-nav-badge">
+                    {count > 99 ? "99+" : count}
+                  </span>
+                )}
+              </NavLink>
+            ))}
+          </nav>
+          {!user && !loading && (
+            <Link to="/auth" className="shop-login-link">
+              Войти
+            </Link>
+          )}
+        </div>
+      </header>
+      <div className="shop-mobile-header">
+        <Link to="/" aria-label="тизави.рф — в каталог">
           <BrandLogo />
-          <span className="shop-brand-tagline">Продукты с доставкой</span>
         </Link>
         <CategoriesLink />
-        <nav aria-label="Навигация магазина">
-          {links.map(({ to, label, Icon, count }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === "/"}
-              aria-label={
-                to === "/cart" ? `Корзина, позиций: ${cartCount}` : label
-              }
-              className={({ isActive }) =>
-                `shop-nav-link ${isActive ? "active" : ""}`
-              }
-            >
-              <Icon className="w-5 h-5" />
-              <span className="shop-nav-label">{label}</span>
-              {(count > 0 || to === "/cart") && (
-                <span className="shop-nav-badge">
-                  {count > 99 ? "99+" : count}
-                </span>
-              )}
-            </NavLink>
-          ))}
-        </nav>
-        {!user && !loading && (
-          <Link to="/auth" className="shop-login-link">
-            Войти
-          </Link>
-        )}
+        <ShopSearch mobile />
+        <Link
+          to={user ? "/profile" : "/auth"}
+          className="shop-mobile-account-link"
+          aria-label={user ? "Профиль" : "Войти"}
+        >
+          <UserIcon className="w-5 h-5" />
+        </Link>
       </div>
-    </header>
+    </>
   );
 }

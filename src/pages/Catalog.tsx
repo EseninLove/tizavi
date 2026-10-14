@@ -1,10 +1,5 @@
-import {
-  CategoriesLink,
-  scrollToCategories,
-} from "../components/CategoriesLink";
-import { BrandLogo } from "../components/BrandLogo";
+import { scrollToCategories } from "../components/CategoriesLink";
 import { StorefrontHome, StorefrontFooter } from "../components/StorefrontHome";
-import { useAuth } from "../context/AuthContext";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useProducts } from "../context/ProductsContext";
@@ -23,7 +18,6 @@ const initial = () => {
   }
 };
 export function Catalog() {
-  const { user: account, miniApp, loading: authLoading } = useAuth();
   const { products, categories, loading, error, reload } = useProducts(),
     { active, loading: subLoading } = useSubscription(),
     { cartCount, cartTotal } = useApp(),
@@ -112,24 +106,15 @@ export function Catalog() {
   useEffect(() => {
     if (location.hash === "#categories" && !loading) scrollToCategories();
   }, [location.hash, loading]);
+  useEffect(() => {
+    const categoryId = new URLSearchParams(location.search).get("category");
+    if (categoryId) browse(categoryId);
+  }, [location.search, loading]);
   const selected =
     categories.find((c) => c.id === category)?.name || "Все категории";
   return (
     <div className="app-container catalog-page market-page">
       <div className="market-topline">
-        <div className="catalog-mobile-account">
-          <BrandLogo />
-          <CategoriesLink />
-          {!miniApp && (
-            <button
-              disabled={authLoading}
-              className="market-mobile-login"
-              onClick={() => navigate(account ? "/profile" : "/auth")}
-            >
-              {authLoading ? "…" : account ? "Профиль" : "Войти"}
-            </button>
-          )}
-        </div>
         <div className="catalog-delivery">
           <DeliveryAddress />
         </div>

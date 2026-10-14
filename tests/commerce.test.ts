@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 import { calculateItems, paymentMatches, canFulfil } from "../api/_commerce";
 import { deliveryEstimate } from "../api/_delivery";
-import { matchesProduct } from "../src/utils/search";
+import { matchesProduct, matchesCategory } from "../src/utils/search";
 import { tbankToken } from "../api/_payment-provider";
 import { encryptCredentials, decryptCredentials } from "../api/_payment-config";
 import { formatPrice } from "../src/utils/format";
@@ -159,6 +159,13 @@ test("search supports typos, aliases and brand metadata", () => {
   assert.equal(matchesProduct(p, "томаты ферма"), true);
   assert.equal(matchesProduct(p, "помидры"), true);
   assert.equal(matchesProduct(p, "бананы"), false);
+  const dairy = { id: "dairy", name: "Молочные продукты и яйца" };
+  assert.equal(matchesCategory(dairy, "молочые"), true);
+  assert.equal(matchesCategory(dairy, "профиль"), false);
+  assert.equal(
+    matchesCategory({ id: "all", name: "Все категории" }, "категории"),
+    false,
+  );
 });
 
 test("database and API payment lifecycle rejects forged activation and applies real confirmation once", async () => {

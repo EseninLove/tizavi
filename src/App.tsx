@@ -1,3 +1,4 @@
+import { Search } from "./pages/Search";
 import { ProfileSettings } from "./pages/ProfileSettings";
 import { ShopHeader } from "./components/ShopHeader";
 import { Auth } from "./pages/Auth";
@@ -51,6 +52,7 @@ export default function App() {
         />
         <Route path="/auth" element={<Auth />} />
         <Route path="/" element={<Catalog />} />
+        <Route path="/search" element={<Search />} />
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
