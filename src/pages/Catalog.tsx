@@ -158,35 +158,62 @@ export function Catalog() {
         <div className="catalog-delivery">
           <DeliveryAddress />
         </div>
-        <div className="catalog-title-row flex items-center gap-2">
-          <button
-            aria-label="Все категории"
-            onClick={() => setDrawer(true)}
-            className="w-10 h-10 rounded-xl bg-tg-section-bg text-xl"
-          >
-            ☰
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-bold text-lg">Каталог</h1>
-            <p className="text-xs text-tg-hint truncate">{selected}</p>
+        <div className="catalog-title-row">
+          <div className="catalog-heading">
+            <h1>Каталог</h1>
+            <p>{selected}</p>
           </div>
-          <button
-            aria-label={showSearch ? "Закрыть поиск" : "Поиск"}
-            onClick={() => {
-              setShowSearch((v) => !v);
-              if (showSearch) setSearch("");
-            }}
-            className="w-10 h-10 rounded-xl bg-tg-section-bg flex items-center justify-center"
-          >
-            {showSearch ? "✕" : <SearchIcon className="w-5 h-5" />}
-          </button>
-          <button
-            aria-label="Фильтры"
-            onClick={() => setFilters((v) => !v)}
-            className="w-10 h-10 rounded-xl bg-tg-section-bg"
-          >
-            ⚙
-          </button>
+          <div className="catalog-actions">
+            <button
+              className="catalog-control"
+              aria-label="Все категории"
+              aria-expanded={drawer}
+              onClick={() => setDrawer(true)}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                aria-hidden="true"
+              >
+                <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+              </svg>
+              <span>Категории</span>
+            </button>
+            <button
+              className={`catalog-control ${showSearch ? "active" : ""}`}
+              aria-label={showSearch ? "Закрыть поиск" : "Поиск"}
+              aria-expanded={showSearch}
+              onClick={() => {
+                setShowSearch((v) => !v);
+                if (showSearch) setSearch("");
+              }}
+            >
+              <SearchIcon className="w-5 h-5" />
+              <span>{showSearch ? "Закрыть" : "Поиск"}</span>
+            </button>
+            <button
+              className={`catalog-control ${filters ? "active" : ""}`}
+              aria-label="Фильтры"
+              aria-expanded={filters}
+              onClick={() => setFilters((v) => !v)}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                aria-hidden="true"
+              >
+                <path
+                  d="M4 7h9m4 0h3M4 17h3m4 0h9M13 4v6M7 14v6"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span>Фильтры</span>
+            </button>
+          </div>
         </div>
         {showSearch && (
           <div className="catalog-search-area">
