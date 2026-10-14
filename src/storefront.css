@@ -163,6 +163,8 @@
   margin: 14px 0 32px;
 }
 .market-collection {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   text-align: left;
   padding: 18px 20px;
@@ -197,6 +199,7 @@
   font-variant-numeric: tabular-nums;
 }
 .market-collection > strong {
+  flex: 1;
   display: block;
   font-size: 21px;
   letter-spacing: -0.6px;
