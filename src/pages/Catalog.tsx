@@ -137,10 +137,10 @@ export function Catalog() {
   const selected =
     categories.find((c) => c.id === category)?.name || "Все категории";
   return (
-    <div className="app-container">
+    <div className="app-container catalog-page">
       <header className="sticky top-0 z-40 bg-tg-secondary-bg/95 backdrop-blur-lg px-4 pt-3 pb-3 space-y-2">
         {!miniApp && (
-          <div className="flex items-center justify-between">
+          <div className="catalog-mobile-account flex items-center justify-between">
             <strong className="text-sm">Tizavi</strong>
             <button
               disabled={authLoading}
@@ -155,8 +155,10 @@ export function Catalog() {
             </button>
           </div>
         )}
-        <DeliveryAddress />
-        <div className="flex items-center gap-2">
+        <div className="catalog-delivery">
+          <DeliveryAddress />
+        </div>
+        <div className="catalog-title-row flex items-center gap-2">
           <button
             aria-label="Все категории"
             onClick={() => setDrawer(true)}
@@ -187,7 +189,7 @@ export function Catalog() {
           </button>
         </div>
         {showSearch && (
-          <div>
+          <div className="catalog-search-area">
             <div className="flex gap-2">
               <input
                 value={search}
@@ -238,7 +240,7 @@ export function Catalog() {
             )}
           </div>
         )}
-        <div className="flex gap-2 overflow-auto no-scrollbar">
+        <div className="catalog-section-tabs flex gap-2 overflow-auto no-scrollbar">
           {[
             ["all", "Все"],
             ["sale", "Акции"],
@@ -255,7 +257,7 @@ export function Catalog() {
           ))}
         </div>
         {filters && (
-          <div className="section-card p-3 space-y-3">
+          <div className="catalog-filters section-card p-3 space-y-3">
             <label className="block text-xs">
               Бренд
               <select

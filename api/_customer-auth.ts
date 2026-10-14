@@ -21,6 +21,7 @@ export interface Customer {
   telegram_id: string | null;
   email: string | null;
   first_name: string | null;
+  display_name: string | null;
   last_name: string | null;
   username: string | null;
   photo_url: string | null;
@@ -72,10 +73,11 @@ export function publicCustomer(row: Customer) {
     email: row.email,
     emailVerified: row.email_verified,
     name:
+      row.display_name ||
       [row.first_name, row.last_name].filter(Boolean).join(" ") ||
       row.email ||
       "Покупатель",
-    firstName: row.first_name || "",
+    firstName: row.display_name || row.first_name || "",
     username: row.username,
     photoUrl: row.photo_url,
   };

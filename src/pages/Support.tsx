@@ -108,7 +108,7 @@ export function Support() {
   };
 
   return (
-    <div className="app-container">
+    <div className="app-container support-page">
       <header className="px-4 pt-4 pb-2">
         <button
           onClick={() => navigate("/profile")}
@@ -119,9 +119,9 @@ export function Support() {
         <h1 className="text-xl font-bold text-tg-text">Поддержка</h1>
       </header>
 
-      <main className="scroll-area px-4 space-y-4">
+      <main className="scroll-area px-4 support-layout">
         {sent && (
-          <div className="section-card p-4 flex items-center gap-3 border-2 border-green-500">
+          <div className="support-confirmation section-card p-4 flex items-center gap-3 border-2 border-green-500">
             <span className="w-10 h-10 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center text-xl shrink-0">
               ✓
             </span>
@@ -136,7 +136,7 @@ export function Support() {
           </div>
         )}
 
-        <div className="section-card p-4 space-y-3">
+        <div className="support-form section-card p-4 space-y-3">
           <h2 className="text-sm font-semibold text-tg-text">Новая заявка</h2>
 
           <div>
@@ -210,7 +210,7 @@ export function Support() {
         </div>
 
         {tickets.length > 0 && (
-          <div className="space-y-3">
+          <div className="support-history space-y-3">
             <h2 className="text-base font-bold text-tg-text px-1">
               Мои заявки
             </h2>

@@ -66,7 +66,7 @@ export function PaymentReturn() {
     void check();
   }, [paymentId, webApp, account?.id, authLoading]);
   return (
-    <div className="app-container px-4 pt-8">
+    <div className="app-container status-page px-4 pt-8">
       <h1 className="text-xl font-bold mb-4">Оплата</h1>
       <p className="text-sm mb-4">{message}</p>
       {account ? (

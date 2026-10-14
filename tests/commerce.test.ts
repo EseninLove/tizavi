@@ -718,6 +718,81 @@ test("database and API payment lifecycle rejects forged activation and applies r
       ).status,
       403,
     );
+
+    assert.equal(
+      (
+        await call(auth, "POST", {
+          action: "update-profile",
+          name: "Untrusted",
+        })
+      ).status,
+      401,
+    );
+    assert.equal(
+      (
+        await call(
+          auth,
+          "POST",
+          { action: "update-profile", name: " " },
+          {},
+          false,
+          emailHeaders,
+        )
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await call(
+          auth,
+          "POST",
+          { action: "update-profile", name: "x".repeat(101) },
+          {},
+          false,
+          emailHeaders,
+        )
+      ).status,
+      400,
+    );
+    const updatedName = await call(
+      auth,
+      "POST",
+      {
+        action: "update-profile",
+        name: "  Новое имя  ",
+        userId: accountId,
+        email: "other@example.com",
+      },
+      {},
+      false,
+      emailHeaders,
+    );
+    assert.equal(updatedName.status, 200);
+    assert.equal(updatedName.body.user.name, "Новое имя");
+    assert.equal(updatedName.body.user.email, "test@example.com");
+    assert.equal(
+      (await call(auth, "GET", {}, {}, false, emailHeaders)).body.user.name,
+      "Новое имя",
+    );
+    const ownTelegramName = await call(auth, "POST", {
+      action: "me",
+      initData: init(),
+    });
+    assert.equal(ownTelegramName.body.user.name, "Покупатель");
+    const miniName = await call(
+      auth,
+      "POST",
+      { action: "update-profile", initData: init(), name: "Имя в магазине" },
+      {},
+      false,
+      sameOrigin,
+    );
+    assert.equal(miniName.body.user.name, "Имя в магазине");
+    assert.equal(
+      (await call(auth, "POST", { action: "me", initData: init() })).body.user
+        .name,
+      "Имя в магазине",
+    );
     const emailSub = await createPayment(
       registered.body.user.id,
       "subscription",

@@ -76,7 +76,7 @@ export function Checkout() {
   };
   if (!cart.length)
     return (
-      <div className="app-container">
+      <div className="app-container checkout-page">
         <EmptyState
           icon="🛒"
           title="Корзина пуста"
@@ -92,7 +92,7 @@ export function Checkout() {
     return <div className="app-container p-6">Проверяем аккаунт…</div>;
   if (!account)
     return (
-      <div className="app-container">
+      <div className="app-container checkout-page">
         <EmptyState
           icon="👤"
           title="Войдите для оформления"
@@ -104,7 +104,7 @@ export function Checkout() {
     );
   if (!active)
     return (
-      <div className="app-container">
+      <div className="app-container checkout-page">
         <EmptyState
           icon="💳"
           title="Нужна подписка"
@@ -115,7 +115,7 @@ export function Checkout() {
       </div>
     );
   return (
-    <div className="app-container">
+    <div className="app-container checkout-page">
       <header className="p-4">
         <button
           onClick={() => navigate("/cart")}
@@ -125,118 +125,122 @@ export function Checkout() {
         </button>
         <h1 className="text-xl font-bold">Оформление заказа</h1>
       </header>
-      <main className="scroll-area px-4 space-y-4 checkout-content">
-        <DeliveryAddress />
-        {quote && (
-          <p className="text-xs text-tg-hint">
-            Курьер · ориентировочно {deliveryWindow(quote)}
-          </p>
-        )}
-        <section className="section-card p-4 space-y-3">
-          <h2 className="font-semibold text-sm">Контакты</h2>
-          <label className="block text-xs text-tg-hint">
-            Имя
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="input mt-1"
-              autoComplete="name"
-              maxLength={100}
-            />
-          </label>
-          <label className="block text-xs text-tg-hint">
-            Телефон
-            <input
-              type="tel"
-              autoComplete="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+7 (999) 123-45-67"
-              className="input mt-1"
-            />
-          </label>
-          <label className="block text-xs text-tg-hint">
-            Квартира, подъезд, домофон и комментарий
-            <textarea
-              className="input mt-1"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              rows={2}
-              maxLength={2000}
-            />
-          </label>
-        </section>
-        <section className="section-card p-4 space-y-2">
-          <h2 className="font-semibold text-sm">
-            {draft ? "Проверьте заказ перед оплатой" : "Ваш заказ"}
-          </h2>
-          {(draft?.items || cart).map((i) => (
-            <div
-              key={i.product.id}
-              className="flex justify-between gap-3 text-sm"
-            >
-              <span>
-                {i.product.name} · {formatQuantity(i.quantity)}{" "}
-                {i.product.unit || "шт"}
-              </span>
-              <span className="whitespace-nowrap">
-                {formatPrice(i.product.price * i.quantity)}
-              </span>
-            </div>
-          ))}
-          <div className="flex justify-between text-sm pt-3 border-t border-tg-separator">
-            <span>Товары</span>
-            <span>{formatPrice(draft?.total ?? cartTotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span>Доставка</span>
-            <span>
-              {draft
-                ? draft.deliveryFee === 0
-                  ? "Бесплатно"
-                  : formatPrice(draft.deliveryFee)
-                : "Рассчитаем при продолжении"}
-            </span>
-          </div>
-          {draft && (
-            <div className="flex justify-between font-bold">
-              <span>К оплате</span>
-              <span>{formatPrice(draft.payableTotal)}</span>
-            </div>
+      <main className="scroll-area px-4 checkout-content checkout-layout">
+        <div className="checkout-fields space-y-4">
+          <DeliveryAddress />
+          {quote && (
+            <p className="text-xs text-tg-hint">
+              Курьер · ориентировочно {deliveryWindow(quote)}
+            </p>
           )}
-        </section>
-        <section className="section-card p-4 text-sm">
-          💳 Оплата на защищённой странице платёжного сервиса. Подтверждение
-          появится в магазине после проверки платежа.
-        </section>
-        {error && (
-          <p
-            role="alert"
-            className="text-sm text-red-500 rounded-xl bg-red-500/10 p-3"
-          >
-            {error}
-          </p>
-        )}
-        {draft && (
-          <p className="text-xs text-tg-hint">
-            Заказ {draft.id} сохранён и ожидает оплаты. Сумма учитывает
-            актуальные цены и адрес доставки.
-          </p>
-        )}
+          <section className="section-card p-4 space-y-3">
+            <h2 className="font-semibold text-sm">Контакты</h2>
+            <label className="block text-xs text-tg-hint">
+              Имя
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="input mt-1"
+                autoComplete="name"
+                maxLength={100}
+              />
+            </label>
+            <label className="block text-xs text-tg-hint">
+              Телефон
+              <input
+                type="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+7 (999) 123-45-67"
+                className="input mt-1"
+              />
+            </label>
+            <label className="block text-xs text-tg-hint">
+              Квартира, подъезд, домофон и комментарий
+              <textarea
+                className="input mt-1"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={2}
+                maxLength={2000}
+              />
+            </label>
+          </section>
+        </div>
+        <div className="checkout-summary space-y-4">
+          <section className="section-card p-4 space-y-2">
+            <h2 className="font-semibold text-sm">
+              {draft ? "Проверьте заказ перед оплатой" : "Ваш заказ"}
+            </h2>
+            {(draft?.items || cart).map((i) => (
+              <div
+                key={i.product.id}
+                className="flex justify-between gap-3 text-sm"
+              >
+                <span>
+                  {i.product.name} · {formatQuantity(i.quantity)}{" "}
+                  {i.product.unit || "шт"}
+                </span>
+                <span className="whitespace-nowrap">
+                  {formatPrice(i.product.price * i.quantity)}
+                </span>
+              </div>
+            ))}
+            <div className="flex justify-between text-sm pt-3 border-t border-tg-separator">
+              <span>Товары</span>
+              <span>{formatPrice(draft?.total ?? cartTotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span>Доставка</span>
+              <span>
+                {draft
+                  ? draft.deliveryFee === 0
+                    ? "Бесплатно"
+                    : formatPrice(draft.deliveryFee)
+                  : "Рассчитаем при продолжении"}
+              </span>
+            </div>
+            {draft && (
+              <div className="flex justify-between font-bold">
+                <span>К оплате</span>
+                <span>{formatPrice(draft.payableTotal)}</span>
+              </div>
+            )}
+          </section>
+          <section className="section-card p-4 text-sm">
+            💳 Оплата на защищённой странице платёжного сервиса. Подтверждение
+            появится в магазине после проверки платежа.
+          </section>
+          {error && (
+            <p
+              role="alert"
+              className="text-sm text-red-500 rounded-xl bg-red-500/10 p-3"
+            >
+              {error}
+            </p>
+          )}
+          {draft && (
+            <p className="text-xs text-tg-hint">
+              Заказ {draft.id} сохранён и ожидает оплаты. Сумма учитывает
+              актуальные цены и адрес доставки.
+            </p>
+          )}
+          <div className="shop-action-bar fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md p-4 bg-tg-section-bg safe-bottom">
+            <button
+              className="btn-primary w-full"
+              disabled={!valid || busy}
+              onClick={() => void submit()}
+            >
+              {busy
+                ? "Подождите…"
+                : draft
+                  ? `Оплатить · ${formatPrice(draft.payableTotal)}`
+                  : "Продолжить"}
+            </button>
+          </div>
+        </div>
       </main>
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md p-4 bg-tg-section-bg safe-bottom">
-        <button
-          className="btn-primary w-full"
-          disabled={!valid || busy}
-          onClick={() => void submit()}
-        >
-          {busy
-            ? "Подождите…"
-            : draft
-              ? `Оплатить · ${formatPrice(draft.payableTotal)}`
-              : "Продолжить"}
-        </button>
-      </div>
     </div>
   );
 }

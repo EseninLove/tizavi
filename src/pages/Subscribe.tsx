@@ -46,12 +46,12 @@ export function Subscribe() {
   };
 
   return (
-    <div className="app-container">
+    <div className="app-container subscription-page">
       <header className="px-4 pt-4 pb-2">
         <h1 className="text-xl font-bold text-tg-text">Подписка</h1>
       </header>
 
-      <main className="scroll-area px-4 space-y-4">
+      <main className="scroll-area px-4 space-y-4 subscription-content">
         {active && (
           <div className="section-card p-4 flex items-center gap-3 border-2 border-green-500">
             <span className="w-10 h-10 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center text-xl shrink-0">
@@ -145,21 +145,20 @@ export function Subscribe() {
         </div>
 
         <div className="h-2" />
+        <div className="shop-action-bar fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-40 px-4 pb-[5.5rem] pt-3 bg-gradient-to-t from-tg-secondary-bg via-tg-secondary-bg to-transparent">
+          <button
+            onClick={handleBuy}
+            disabled={buying || loading}
+            className="btn-primary w-full disabled:opacity-50"
+          >
+            {buying
+              ? "Ожидание оплаты..."
+              : active
+                ? `Продлить на ${days} дней · ${formatPrice(priceRub)}`
+                : `Оплатить картой · ${formatPrice(priceRub)}`}
+          </button>
+        </div>
       </main>
-
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-40 px-4 pb-[5.5rem] pt-3 bg-gradient-to-t from-tg-secondary-bg via-tg-secondary-bg to-transparent">
-        <button
-          onClick={handleBuy}
-          disabled={buying || loading}
-          className="btn-primary w-full disabled:opacity-50"
-        >
-          {buying
-            ? "Ожидание оплаты..."
-            : active
-              ? `Продлить на ${days} дней · ${formatPrice(priceRub)}`
-              : `Оплатить картой · ${formatPrice(priceRub)}`}
-        </button>
-      </div>
     </div>
   );
 }

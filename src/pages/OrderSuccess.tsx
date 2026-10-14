@@ -43,7 +43,7 @@ export function OrderSuccess() {
 
   if (!order) {
     return (
-      <div className="app-container">
+      <div className="app-container order-page">
         <main className="scroll-area flex items-center justify-center">
           <div className="text-center">
             <p className="text-sm text-tg-hint">
@@ -61,7 +61,7 @@ export function OrderSuccess() {
   }
 
   return (
-    <div className="app-container">
+    <div className="app-container order-page">
       <main className="scroll-area px-4">
         <div className="flex flex-col items-center text-center py-8">
           <div

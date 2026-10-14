@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { useProducts } from "../context/ProductsContext";
 import { useTelegram } from "../lib/telegram";
@@ -107,170 +107,178 @@ export function ProductDetail() {
   const wishlisted = isWishlisted(product.id);
 
   return (
-    <div className="app-container">
+    <div className="app-container product-page">
+      <header className="px-4 pt-4 pb-3">
+        <Link to="/" className="text-sm text-tg-link">
+          ← Каталог
+        </Link>
+      </header>
       <main className="scroll-area">
-        <div className="aspect-square w-full bg-tg-secondary-bg overflow-hidden">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
-        </div>
+        <div className="product-overview">
+          <div className="product-photo aspect-square w-full bg-tg-secondary-bg overflow-hidden">
+            <img
+              src={product.image}
+              alt={product.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
 
-        <div className="section-card -mt-5 relative z-10 rounded-t-3xl p-4 space-y-4">
-          {product.badge && (
-            <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-md bg-tg-button text-tg-button-text">
-              {product.badge}
-            </span>
-          )}
-
-          <h1 className="text-lg font-bold text-tg-text leading-snug">
-            {product.name}
-          </h1>
-
-          {product.reviewsCount > 0 && (
-            <div className="flex items-center gap-2 text-sm">
-              <StarIcon className="w-4 h-4 text-amber-400" />
-              <span>
-                {product.rating} · {formatNumber(product.reviewsCount)} оценок
-              </span>
-            </div>
-          )}
-          {(product.adminRatingsCount || 0) > 0 && (
-            <p className="text-xs text-tg-hint">
-              Рейтинг учитывает {product.actualReviewsCount || 0} оценок
-              покупателей и {product.adminRatingsCount} оценок магазина.
-            </p>
-          )}
-          {product.packageLabel && (
-            <p className="text-sm text-tg-hint">{product.packageLabel}</p>
-          )}
-
-          <div className="flex items-end gap-2">
-            <span className="text-2xl font-bold text-tg-text">
-              {formatPrice(product.price)}
-              {perUnitLabel && (
-                <span className="text-base font-semibold">{perUnitLabel}</span>
-              )}
-            </span>
-            {product.oldPrice && (
-              <span className="text-base text-tg-hint line-through mb-0.5">
-                {formatPrice(product.oldPrice)}
-                {perUnitLabel && <span className="text-xs">/{unit}</span>}
+          <div className="product-info section-card -mt-5 relative z-10 rounded-t-3xl p-4 space-y-4">
+            {product.badge && (
+              <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-md bg-tg-button text-tg-button-text">
+                {product.badge}
               </span>
             )}
-          </div>
 
-          {(packWeight || packInfo) && (
-            <div className="flex items-center gap-2 flex-wrap">
-              {packWeight && (
-                <span className="px-2.5 py-1 text-xs font-medium rounded-lg bg-tg-secondary-bg text-tg-text">
-                  Фасовка: {packWeight}
+            <h1 className="text-lg font-bold text-tg-text leading-snug">
+              {product.name}
+            </h1>
+
+            {product.reviewsCount > 0 && (
+              <div className="flex items-center gap-2 text-sm">
+                <StarIcon className="w-4 h-4 text-amber-400" />
+                <span>
+                  {product.rating} · {formatNumber(product.reviewsCount)} оценок
                 </span>
-              )}
-              {packInfo && (
-                <span className="px-2.5 py-1 text-xs font-medium rounded-lg bg-tg-secondary-bg text-tg-hint">
-                  {packInfo}
+              </div>
+            )}
+            {(product.adminRatingsCount || 0) > 0 && (
+              <p className="text-xs text-tg-hint">
+                Рейтинг учитывает {product.actualReviewsCount || 0} оценок
+                покупателей и {product.adminRatingsCount} оценок магазина.
+              </p>
+            )}
+            {product.packageLabel && (
+              <p className="text-sm text-tg-hint">{product.packageLabel}</p>
+            )}
+
+            <div className="flex items-end gap-2">
+              <span className="text-2xl font-bold text-tg-text">
+                {formatPrice(product.price)}
+                {perUnitLabel && (
+                  <span className="text-base font-semibold">
+                    {perUnitLabel}
+                  </span>
+                )}
+              </span>
+              {product.oldPrice && (
+                <span className="text-base text-tg-hint line-through mb-0.5">
+                  {formatPrice(product.oldPrice)}
+                  {perUnitLabel && <span className="text-xs">/{unit}</span>}
                 </span>
               )}
             </div>
-          )}
 
-          <div className="pt-2 border-t border-tg-separator">
-            <h2 className="text-sm font-semibold text-tg-text mb-1.5">
-              Описание
-            </h2>
-            <p className="text-sm text-tg-hint leading-relaxed">
-              {product.description}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 pt-2 border-t border-tg-separator">
-            <span
-              className={`inline-flex items-center gap-1.5 text-sm font-medium ${
-                product.inStock ? "text-green-500" : "text-red-500"
-              }`}
-            >
-              <span
-                className={`w-2 h-2 rounded-full ${product.inStock ? "bg-green-500" : "bg-red-500"}`}
-              />
-              {product.inStock ? "В наличии" : "Нет в наличии"}
-            </span>
-          </div>
-
-          {product.inStock && (
-            <div className="pt-2 border-t border-tg-separator">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-tg-text">
-                  {quantityLabel(product.unit)}
-                </span>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => {
-                      haptic.impact("light");
-                      setQuantity((q) =>
-                        Math.max(minQty, Math.round((q - step) * 100) / 100),
-                      );
-                    }}
-                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-tg-secondary-bg text-tg-text active:scale-90 transition-transform"
-                  >
-                    <MinusIcon className="w-5 h-5" />
-                  </button>
-                  <span className="w-10 text-center font-semibold">
-                    {formatQuantity(quantity)}
+            {(packWeight || packInfo) && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {packWeight && (
+                  <span className="px-2.5 py-1 text-xs font-medium rounded-lg bg-tg-secondary-bg text-tg-text">
+                    Фасовка: {packWeight}
                   </span>
-                  <button
-                    onClick={() => {
-                      haptic.impact("light");
-                      setQuantity((q) => Math.round((q + step) * 100) / 100);
-                    }}
-                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-tg-secondary-bg text-tg-text active:scale-90 transition-transform"
-                  >
-                    <PlusIcon className="w-5 h-5" />
-                  </button>
+                )}
+                {packInfo && (
+                  <span className="px-2.5 py-1 text-xs font-medium rounded-lg bg-tg-secondary-bg text-tg-hint">
+                    {packInfo}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-tg-separator">
+              <h2 className="text-sm font-semibold text-tg-text mb-1.5">
+                Описание
+              </h2>
+              <p className="text-sm text-tg-hint leading-relaxed">
+                {product.description}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-tg-separator">
+              <span
+                className={`inline-flex items-center gap-1.5 text-sm font-medium ${
+                  product.inStock ? "text-green-500" : "text-red-500"
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${product.inStock ? "bg-green-500" : "bg-red-500"}`}
+                />
+                {product.inStock ? "В наличии" : "Нет в наличии"}
+              </span>
+            </div>
+
+            {product.inStock && (
+              <div className="pt-2 border-t border-tg-separator">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-tg-text">
+                    {quantityLabel(product.unit)}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => {
+                        haptic.impact("light");
+                        setQuantity((q) =>
+                          Math.max(minQty, Math.round((q - step) * 100) / 100),
+                        );
+                      }}
+                      className="w-9 h-9 flex items-center justify-center rounded-lg bg-tg-secondary-bg text-tg-text active:scale-90 transition-transform"
+                    >
+                      <MinusIcon className="w-5 h-5" />
+                    </button>
+                    <span className="w-10 text-center font-semibold">
+                      {formatQuantity(quantity)}
+                    </span>
+                    <button
+                      onClick={() => {
+                        haptic.impact("light");
+                        setQuantity((q) => Math.round((q + step) * 100) / 100);
+                      }}
+                      className="w-9 h-9 flex items-center justify-center rounded-lg bg-tg-secondary-bg text-tg-text active:scale-90 transition-transform"
+                    >
+                      <PlusIcon className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {product.inStock && (
+            {product.inStock && (
+              <button
+                onClick={() => addToCart(product, quantity)}
+                className="btn-primary w-full"
+              >
+                Добавить {formatQuantity(quantity)} {unit} ·{" "}
+                {formatPrice(product.price * quantity)}
+              </button>
+            )}
             <button
-              onClick={() => addToCart(product, quantity)}
-              className="btn-primary w-full"
+              onClick={() => toggleWishlist(product.id)}
+              className={`btn w-full ${wishlisted ? "bg-red-50 text-red-500" : "btn-secondary"}`}
+              style={
+                wishlisted
+                  ? { backgroundColor: "rgba(239,68,68,0.1)" }
+                  : undefined
+              }
             >
-              Добавить {formatQuantity(quantity)} {unit} ·{" "}
-              {formatPrice(product.price * quantity)}
+              <HeartIcon className="w-5 h-5" filled={wishlisted} />
+              {wishlisted ? "В избранном" : "В избранное"}
             </button>
-          )}
-          <button
-            onClick={() => toggleWishlist(product.id)}
-            className={`btn w-full ${wishlisted ? "bg-red-50 text-red-500" : "btn-secondary"}`}
-            style={
-              wishlisted
-                ? { backgroundColor: "rgba(239,68,68,0.1)" }
-                : undefined
-            }
-          >
-            <HeartIcon className="w-5 h-5" filled={wishlisted} />
-            {wishlisted ? "В избранном" : "В избранное"}
-          </button>
 
-          <div className="flex items-center gap-2 pt-1">
-            <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-tg-secondary-bg">
-              <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
-              <span className="text-xs text-tg-hint">
-                Доставка по Москве и области
-              </span>
-            </div>
-            <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-tg-secondary-bg">
-              <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
-              <span className="text-xs text-tg-hint">
-                Условия доставки — по адресу
-              </span>
+            <div className="flex items-center gap-2 pt-1">
+              <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-tg-secondary-bg">
+                <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
+                <span className="text-xs text-tg-hint">
+                  Доставка по Москве и области
+                </span>
+              </div>
+              <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-tg-secondary-bg">
+                <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
+                <span className="text-xs text-tg-hint">
+                  Условия доставки — по адресу
+                </span>
+              </div>
             </div>
           </div>
         </div>
-
         <ProductReviews productId={product.id} />
         {related.length > 0 && (
           <div className="mt-4">

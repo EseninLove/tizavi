@@ -38,6 +38,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await removeSession(req, res);
       return res.json({ ok: true, user: null });
     }
+    if (action === "update-profile") {
+      const user = await authenticateCustomer(req);
+      if (!user) throw new ShopError("Войдите в аккаунт", 401);
+      const name = req.body?.name;
+      if (typeof name !== "string" || !name.trim() || name.trim().length > 100)
+        throw new ShopError("Укажите имя от 1 до 100 символов");
+      const updated = (
+        await sql<Customer>`UPDATE users SET display_name=${name.trim()} WHERE id=${user.id} RETURNING *`
+      ).rows[0];
+      return res.json({ ok: true, user: publicCustomer(updated) });
+    }
     if (
       !["register", "login", "attach-email", "change-password"].includes(action)
     )

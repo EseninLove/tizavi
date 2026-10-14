@@ -212,7 +212,7 @@ export function Legal() {
   const doc = DOCS.find((d) => d.id === docId) ?? DOCS[0];
 
   return (
-    <div className="app-container">
+    <div className="app-container reading-page">
       <header className="px-4 pt-4 pb-2">
         <button
           onClick={() => navigate(-1)}

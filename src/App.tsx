@@ -1,7 +1,9 @@
+import { ProfileSettings } from "./pages/ProfileSettings";
+import { ShopHeader } from "./components/ShopHeader";
 import { Auth } from "./pages/Auth";
 import { PaymentMonitor } from "./components/PaymentMonitor";
 import { PaymentReturn } from "./pages/PaymentReturn";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useLayoutEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { Catalog } from "./pages/Catalog";
 import { ProductDetail } from "./pages/ProductDetail";
@@ -25,6 +27,9 @@ export default function App() {
   useBackButton();
 
   const isAdmin = location.pathname.startsWith("/admin");
+  useLayoutEffect(() => {
+    if (!isAdmin) window.scrollTo(0, 0);
+  }, [location.pathname, isAdmin]);
   const hideBottomNav =
     isAdmin ||
     ["/auth", "/checkout", "/order-success", "/payment-return"].some((p) =>
@@ -32,7 +37,8 @@ export default function App() {
     );
 
   return (
-    <>
+    <div className={isAdmin ? undefined : "shop-shell"}>
+      {!isAdmin && <ShopHeader />}
       <PaymentMonitor />
       <Routes>
         <Route
@@ -50,6 +56,7 @@ export default function App() {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/order-success/:id" element={<OrderSuccess />} />
         <Route path="/wishlist" element={<Wishlist />} />
+        <Route path="/profile/settings" element={<ProfileSettings />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/payment-return" element={<PaymentReturn />} />
         <Route path="/subscribe" element={<Subscribe />} />
@@ -58,6 +65,6 @@ export default function App() {
         <Route path="*" element={<Catalog />} />
       </Routes>
       {!hideBottomNav && <BottomNav />}
-    </>
+    </div>
   );
 }

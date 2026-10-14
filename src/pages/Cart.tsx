@@ -24,7 +24,7 @@ export function Cart() {
 
   if (cart.length === 0) {
     return (
-      <div className="app-container">
+      <div className="app-container cart-page">
         <header className="px-4 pt-4 pb-2">
           <h1 className="text-xl font-bold text-tg-text">Корзина</h1>
         </header>
@@ -42,7 +42,7 @@ export function Cart() {
   }
 
   return (
-    <div className="app-container">
+    <div className="app-container cart-page">
       <header className="flex items-center justify-between px-4 pt-4 pb-2">
         <div>
           <h1 className="text-xl font-bold text-tg-text">Корзина</h1>
@@ -63,117 +63,118 @@ export function Cart() {
         </button>
       </header>
 
-      <main className="scroll-area px-4 catalog-with-cart">
-        <div className="mb-3">
-          <DeliveryAddress />
-        </div>
-        <div className="space-y-3">
-          {cart.map(({ product, quantity }) => {
-            const unit = product.unit || "шт";
-            const step = quantityStep(unit);
-            const isWeight = unit === "кг" || unit === "л";
-            return (
-              <div key={product.id} className="section-card flex gap-3 p-3">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-20 h-20 rounded-xl object-cover shrink-0"
-                  loading="lazy"
-                />
-                <div className="flex-1 min-w-0 flex flex-col">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3
-                      className="text-sm font-medium text-tg-text line-clamp-2 leading-snug cursor-pointer"
-                      onClick={() => navigate(`/product/${product.id}`)}
-                    >
-                      {product.name}
-                      {isWeight && (
-                        <span className="text-xs text-tg-hint font-normal">
-                          {" "}
-                          · {formatQuantity(quantity)} {unit}
-                        </span>
-                      )}
-                    </h3>
-                    <button
-                      onClick={() => removeFromCart(product.id)}
-                      className="shrink-0 text-tg-hint active:scale-90 transition-transform"
-                      aria-label="Удалить"
-                    >
-                      <TrashIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <div className="flex items-end justify-between mt-auto">
-                    <div className="flex items-center gap-2.5">
-                      <button
-                        onClick={() =>
-                          updateQuantity(
-                            product.id,
-                            Math.max(
-                              0,
-                              Math.round((quantity - step) * 100) / 100,
-                            ),
-                          )
-                        }
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-tg-secondary-bg text-tg-text active:scale-90 transition-transform"
+      <main className="scroll-area px-4 catalog-with-cart cart-layout">
+        <div className="cart-items">
+          <div className="mb-3">
+            <DeliveryAddress />
+          </div>
+          <div className="space-y-3">
+            {cart.map(({ product, quantity }) => {
+              const unit = product.unit || "шт";
+              const step = quantityStep(unit);
+              const isWeight = unit === "кг" || unit === "л";
+              return (
+                <div key={product.id} className="section-card flex gap-3 p-3">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-20 h-20 rounded-xl object-cover shrink-0"
+                    loading="lazy"
+                  />
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3
+                        className="text-sm font-medium text-tg-text line-clamp-2 leading-snug cursor-pointer"
+                        onClick={() => navigate(`/product/${product.id}`)}
                       >
-                        <MinusIcon className="w-4 h-4" />
-                      </button>
-                      <span className="w-8 text-center text-sm font-semibold">
-                        {formatQuantity(quantity)}
-                      </span>
+                        {product.name}
+                        {isWeight && (
+                          <span className="text-xs text-tg-hint font-normal">
+                            {" "}
+                            · {formatQuantity(quantity)} {unit}
+                          </span>
+                        )}
+                      </h3>
                       <button
-                        onClick={() =>
-                          updateQuantity(
-                            product.id,
-                            Math.round((quantity + step) * 100) / 100,
-                          )
-                        }
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-tg-secondary-bg text-tg-text active:scale-90 transition-transform"
+                        onClick={() => removeFromCart(product.id)}
+                        className="shrink-0 text-tg-hint active:scale-90 transition-transform"
+                        aria-label="Удалить"
                       >
-                        <PlusIcon className="w-4 h-4" />
+                        <TrashIcon className="w-5 h-5" />
                       </button>
                     </div>
-                    <span className="text-sm font-bold text-tg-text">
-                      {formatPrice(product.price * quantity)}
-                    </span>
+                    <div className="flex items-end justify-between mt-auto">
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          onClick={() =>
+                            updateQuantity(
+                              product.id,
+                              Math.max(
+                                0,
+                                Math.round((quantity - step) * 100) / 100,
+                              ),
+                            )
+                          }
+                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-tg-secondary-bg text-tg-text active:scale-90 transition-transform"
+                        >
+                          <MinusIcon className="w-4 h-4" />
+                        </button>
+                        <span className="w-8 text-center text-sm font-semibold">
+                          {formatQuantity(quantity)}
+                        </span>
+                        <button
+                          onClick={() =>
+                            updateQuantity(
+                              product.id,
+                              Math.round((quantity + step) * 100) / 100,
+                            )
+                          }
+                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-tg-secondary-bg text-tg-text active:scale-90 transition-transform"
+                        >
+                          <PlusIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <span className="text-sm font-bold text-tg-text">
+                        {formatPrice(product.price * quantity)}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="section-card mt-4 p-4 space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-tg-hint">Товары ({cart.length})</span>
-            <span className="text-tg-text font-medium">
-              {formatPrice(cartTotal)}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-tg-hint">Доставка</span>
-            <span className="text-tg-text font-medium">
-              Рассчитаем по адресу
-            </span>
-          </div>
-          <div className="border-t border-tg-separator pt-2 flex justify-between">
-            <span className="text-tg-text font-semibold">Товары</span>
-            <span className="text-tg-text font-bold text-lg">
-              {formatPrice(cartTotal)}
-            </span>
+              );
+            })}
           </div>
         </div>
-        <div className="h-4" />
+        <aside className="cart-summary">
+          <div className="section-card mt-4 p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-tg-hint">Товары ({cart.length})</span>
+              <span className="text-tg-text font-medium">
+                {formatPrice(cartTotal)}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-tg-hint">Доставка</span>
+              <span className="text-tg-text font-medium">
+                Рассчитаем по адресу
+              </span>
+            </div>
+            <div className="border-t border-tg-separator pt-2 flex justify-between">
+              <span className="text-tg-text font-semibold">Товары</span>
+              <span className="text-tg-text font-bold text-lg">
+                {formatPrice(cartTotal)}
+              </span>
+            </div>
+          </div>
+          <div className="cart-action shop-action-bar fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-40 px-4 pb-[5.5rem] pt-3 bg-gradient-to-t from-tg-secondary-bg via-tg-secondary-bg to-transparent">
+            <button
+              onClick={() => navigate("/checkout")}
+              className="btn-primary w-full"
+            >
+              Продолжить · {formatPrice(cartTotal)}
+            </button>
+          </div>
+        </aside>
       </main>
-
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-40 px-4 pb-[5.5rem] pt-3 bg-gradient-to-t from-tg-secondary-bg via-tg-secondary-bg to-transparent">
-        <button
-          onClick={() => navigate("/checkout")}
-          className="btn-primary w-full"
-        >
-          Продолжить · {formatPrice(cartTotal)}
-        </button>
-      </div>
     </div>
   );
 }

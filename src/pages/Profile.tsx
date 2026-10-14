@@ -1,9 +1,8 @@
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { useSubscription } from "../context/SubscriptionContext";
-import { useTheme, type Theme } from "../context/ThemeContext";
-import { formatPrice, formatDate } from "../utils/format";
+import { formatPrice, formatDate, pluralize } from "../utils/format";
 import { EmptyState } from "../components/EmptyState";
 import { orderStatusLabel, paymentStatusLabels } from "../utils/orders";
 import { useProducts } from "../context/ProductsContext";
@@ -11,11 +10,10 @@ import { useState } from "react";
 
 export function Profile() {
   const navigate = useNavigate();
-  const { user: account, loading: authLoading, logout, miniApp } = useAuth();
-  const [authError, setAuthError] = useState("");
+  const { user: account, loading: authLoading } = useAuth();
   const user = account
     ? {
-        first_name: account.firstName || account.name,
+        first_name: account.name,
         last_name: "",
         photo_url: account.photoUrl,
         username: account.username,
@@ -38,7 +36,6 @@ export function Profile() {
     days,
     loading: subLoading,
   } = useSubscription();
-  const { theme, setTheme } = useTheme();
   const [showAllOrders, setShowAllOrders] = useState(false);
   const { products, loading: productsLoading } = useProducts();
   const [repeatMessage, setRepeatMessage] = useState("");
@@ -58,11 +55,6 @@ export function Profile() {
     );
   };
 
-  const themeOptions: Array<{ value: Theme; label: string; icon: string }> = [
-    { value: "dark", label: "Тёмная", icon: "🌙" },
-    { value: "light", label: "Светлая", icon: "☀️" },
-  ];
-
   const displayName = user
     ? `${user.first_name}${user.last_name ? " " + user.last_name : ""}`
     : "Гость";
@@ -71,189 +63,144 @@ export function Profile() {
   const visibleOrders = showAllOrders ? orders : orders.slice(0, 3);
 
   return (
-    <div className="app-container">
-      <header className="px-4 pt-4 pb-2">
+    <div className="app-container profile-page">
+      <header className="px-4 pt-4 pb-2 flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-tg-text">Профиль</h1>
+        <Link to="/profile/settings" className="profile-settings-link">
+          <span aria-hidden="true">⚙</span> Настройки
+        </Link>
       </header>
 
-      <main className="scroll-area px-4 space-y-4">
-        <section className="section-card p-4 flex items-center gap-4">
-          {user?.photo_url ? (
-            <img
-              src={user.photo_url}
-              alt={displayName}
-              className="w-16 h-16 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-tg-button text-tg-button-text flex items-center justify-center text-2xl font-bold">
-              {initials}
+      <main className="scroll-area px-4 profile-layout">
+        <div className="profile-summary">
+          <section className="section-card p-4 flex items-center gap-4 profile-identity">
+            {user?.photo_url ? (
+              <img
+                src={user.photo_url}
+                alt={displayName}
+                className="w-16 h-16 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-tg-button text-tg-button-text flex items-center justify-center text-2xl font-bold">
+                {initials}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-bold text-tg-text truncate">
+                {displayName}
+              </h2>
+              {user?.username && (
+                <p className="text-sm text-tg-hint">@{user.username}</p>
+              )}
+              {user?.language_code && (
+                <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-md bg-tg-secondary-bg text-tg-hint">
+                  {user.language_code.toUpperCase()}
+                </span>
+              )}
             </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-tg-text truncate">
-              {displayName}
-            </h2>
-            {user?.username && (
-              <p className="text-sm text-tg-hint">@{user.username}</p>
-            )}
-            {user?.language_code && (
-              <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-md bg-tg-secondary-bg text-tg-hint">
-                {user.language_code.toUpperCase()}
-              </span>
-            )}
-          </div>
-        </section>
-
-        {!account && !authLoading && (
-          <section className="section-card p-4 space-y-3">
-            <h2 className="font-bold">Войдите в аккаунт</h2>
-            <p className="text-sm text-tg-hint">
-              Сохраняйте историю покупок и управляйте подпиской.
-            </p>
-            <button
-              className="btn-primary w-full"
-              onClick={() => navigate("/auth")}
-            >
-              Войти или зарегистрироваться
-            </button>
           </section>
-        )}
-        {account && (
-          <section className="section-card p-4 space-y-3">
-            <h2 className="font-bold">Вход в аккаунт</h2>
-            {account.email ? (
+
+          {!account && !authLoading && (
+            <section className="section-card p-4 space-y-3">
+              <h2 className="font-bold">Войдите в аккаунт</h2>
+              <p className="text-sm text-tg-hint">
+                Сохраняйте историю покупок и управляйте подпиской.
+              </p>
+              <button
+                className="btn-primary w-full"
+                onClick={() => navigate("/auth")}
+              >
+                Войти или зарегистрироваться
+              </button>
+            </section>
+          )}
+          <section
+            className={`section-card p-4 flex items-center gap-3 profile-subscription ${
+              subscribed ? "border-2 border-green-500" : ""
+            }`}
+          >
+            {subLoading ? (
               <>
-                <p className="text-sm">{account.email}</p>
-                <p className="text-xs text-tg-hint">
-                  Подтверждение email пока не требуется.
-                </p>
+                <div className="skeleton w-10 h-10 rounded-full" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="skeleton h-4 w-32" />
+                  <div className="skeleton h-3 w-40" />
+                </div>
+              </>
+            ) : subscribed ? (
+              <>
+                <span className="w-10 h-10 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center text-xl shrink-0">
+                  ✓
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-tg-text">
+                    Подписка оформлена
+                  </div>
+                  {expiresAt && (
+                    <div className="text-xs text-tg-hint mt-0.5">
+                      Действует до {formatDate(new Date(expiresAt).getTime())}
+                    </div>
+                  )}
+                </div>
                 <button
-                  className="btn-secondary w-full text-sm"
-                  onClick={() => navigate("/auth?mode=password")}
+                  onClick={() => navigate("/subscribe")}
+                  className="px-3 py-2 rounded-xl bg-tg-secondary-bg text-xs font-semibold text-tg-text active:scale-95 transition-transform shrink-0"
                 >
-                  Изменить пароль
+                  Продлить
                 </button>
               </>
             ) : (
               <>
-                <p className="text-sm text-tg-hint">
-                  Добавьте email и пароль, чтобы открывать этот профиль и
-                  историю Telegram в браузере.
-                </p>
+                <span className="w-10 h-10 rounded-full bg-tg-secondary-bg text-tg-hint flex items-center justify-center text-xl shrink-0">
+                  💳
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-tg-text">
+                    Подписка не оформлена
+                  </div>
+                  <div className="text-xs text-tg-hint mt-0.5">
+                    {formatPrice(priceRub)} на {days} дней — без неё заказы
+                    недоступны
+                  </div>
+                </div>
                 <button
-                  className="btn-secondary w-full text-sm"
-                  onClick={() => navigate("/auth?mode=attach")}
+                  onClick={() => navigate("/subscribe")}
+                  className="px-3 py-2 rounded-xl bg-tg-button text-tg-button-text text-xs font-semibold active:scale-95 transition-transform shrink-0"
                 >
-                  Добавить email и пароль
+                  Оформить
                 </button>
               </>
             )}
-            {!miniApp && (
-              <button
-                className="text-sm text-tg-link w-full py-2"
-                onClick={() =>
-                  void logout()
-                    .then(() => navigate("/auth"))
-                    .catch((e) => setAuthError(e.message))
-                }
-              >
-                Выйти из аккаунта
-              </button>
-            )}
-            {authError && (
-              <p role="alert" className="text-sm text-red-400">
-                {authError}
-              </p>
-            )}
           </section>
-        )}
-        <section
-          className={`section-card p-4 flex items-center gap-3 ${
-            subscribed ? "border-2 border-green-500" : ""
-          }`}
-        >
-          {subLoading ? (
-            <>
-              <div className="skeleton w-10 h-10 rounded-full" />
-              <div className="flex-1 space-y-1.5">
-                <div className="skeleton h-4 w-32" />
-                <div className="skeleton h-3 w-40" />
-              </div>
-            </>
-          ) : subscribed ? (
-            <>
-              <span className="w-10 h-10 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center text-xl shrink-0">
-                ✓
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-tg-text">
-                  Подписка оформлена
-                </div>
-                {expiresAt && (
-                  <div className="text-xs text-tg-hint mt-0.5">
-                    Действует до {formatDate(new Date(expiresAt).getTime())}
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => navigate("/subscribe")}
-                className="px-3 py-2 rounded-xl bg-tg-secondary-bg text-xs font-semibold text-tg-text active:scale-95 transition-transform shrink-0"
-              >
-                Продлить
-              </button>
-            </>
-          ) : (
-            <>
-              <span className="w-10 h-10 rounded-full bg-tg-secondary-bg text-tg-hint flex items-center justify-center text-xl shrink-0">
-                💳
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-tg-text">
-                  Подписка не оформлена
-                </div>
-                <div className="text-xs text-tg-hint mt-0.5">
-                  {formatPrice(priceRub)} на {days} дней — без неё заказы
-                  недоступны
-                </div>
-              </div>
-              <button
-                onClick={() => navigate("/subscribe")}
-                className="px-3 py-2 rounded-xl bg-tg-button text-tg-button-text text-xs font-semibold active:scale-95 transition-transform shrink-0"
-              >
-                Оформить
-              </button>
-            </>
-          )}
-        </section>
 
-        <section className="grid grid-cols-3 gap-2">
-          <button
-            onClick={() => navigate("/cart")}
-            className="section-card p-3 flex flex-col items-center active:scale-95 transition-transform"
-          >
-            <span className="text-2xl font-bold text-tg-button">
-              {cartCount}
-            </span>
-            <span className="text-xs text-tg-hint mt-0.5">В корзине</span>
-          </button>
-          <button
-            onClick={() => navigate("/wishlist")}
-            className="section-card p-3 flex flex-col items-center active:scale-95 transition-transform"
-          >
-            <span className="text-2xl font-bold text-tg-button">
-              {wishlist.length}
-            </span>
-            <span className="text-xs text-tg-hint mt-0.5">Избранное</span>
-          </button>
-          <div className="section-card p-3 flex flex-col items-center">
-            <span className="text-2xl font-bold text-tg-button">
-              {orders.length}
-            </span>
-            <span className="text-xs text-tg-hint mt-0.5">Заказов</span>
-          </div>
-        </section>
-
-        <section>
+          <section className="grid grid-cols-3 gap-2 profile-stats">
+            <button
+              onClick={() => navigate("/cart")}
+              className="section-card p-3 flex flex-col items-center active:scale-95 transition-transform"
+            >
+              <span className="text-2xl font-bold text-tg-button">
+                {cartCount}
+              </span>
+              <span className="text-xs text-tg-hint mt-0.5">В корзине</span>
+            </button>
+            <button
+              onClick={() => navigate("/wishlist")}
+              className="section-card p-3 flex flex-col items-center active:scale-95 transition-transform"
+            >
+              <span className="text-2xl font-bold text-tg-button">
+                {wishlist.length}
+              </span>
+              <span className="text-xs text-tg-hint mt-0.5">Избранное</span>
+            </button>
+            <div className="section-card p-3 flex flex-col items-center">
+              <span className="text-2xl font-bold text-tg-button">
+                {orders.length}
+              </span>
+              <span className="text-xs text-tg-hint mt-0.5">Заказов</span>
+            </div>
+          </section>
+        </div>
+        <section className="profile-orders">
           <div className="flex items-center justify-between mb-2 px-1">
             <h2 className="text-base font-bold text-tg-text">Мои заказы</h2>
             {orders.length > 3 && (
@@ -288,7 +235,7 @@ export function Profile() {
           {ordersLoading && orders.length === 0 ? (
             <p className="text-sm text-tg-hint">Загружаем заказы…</p>
           ) : visibleOrders.length > 0 ? (
-            <div className="space-y-3">
+            <div className="profile-order-list">
               {visibleOrders.map((order) => (
                 <div key={order.id} className="section-card p-4">
                   <div className="flex items-start justify-between mb-2">
@@ -321,7 +268,12 @@ export function Profile() {
                   </div>
                   <div className="flex justify-between items-center pt-2 border-t border-tg-separator">
                     <span className="text-xs text-tg-hint">
-                      {order.items.reduce((s, i) => s + i.quantity, 0)} товаров
+                      {order.items.length}{" "}
+                      {pluralize(order.items.length, [
+                        "позиция",
+                        "позиции",
+                        "позиций",
+                      ])}
                     </span>
                     <span className="text-sm font-bold text-tg-text">
                       {formatPrice(order.payableTotal)}
@@ -359,28 +311,7 @@ export function Profile() {
           )}
         </section>
 
-        <section className="section-card p-4">
-          <div className="text-sm font-bold text-tg-text mb-3">
-            🎨 Оформление
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {themeOptions.map(({ value, label, icon }) => (
-              <button
-                key={value}
-                onClick={() => setTheme(value)}
-                className={`py-2.5 rounded-xl text-sm font-semibold active:scale-95 transition-all ${
-                  theme === value
-                    ? "bg-tg-button text-tg-button-text"
-                    : "bg-tg-secondary-bg text-tg-text"
-                }`}
-              >
-                {icon} {label}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="section-card divide-y divide-tg-separator">
+        <section className="section-card divide-y divide-tg-separator profile-links">
           <button
             onClick={() => navigate("/legal/offer")}
             className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors"
@@ -415,10 +346,9 @@ export function Profile() {
           </button>
         </section>
 
-        <p className="text-center text-xs text-tg-hint pt-2">
+        <p className="text-center text-xs text-tg-hint pt-2 profile-footer">
           Tizavi Shop · v1.0.0
         </p>
-        <div className="h-2" />
       </main>
     </div>
   );

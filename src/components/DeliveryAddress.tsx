@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import { useDelivery } from "../context/DeliveryContext";
 import { shopRequest } from "../lib/api";
@@ -99,65 +100,67 @@ export function DeliveryAddress() {
             : "Москва и Московская область"}
         </span>
       </button>
-      {open && (
-        <div
-          className="fixed inset-0 z-[70] bg-black/50 flex items-end sm:items-center justify-center"
-          onClick={() => setOpen(false)}
-        >
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-label="Адрес доставки"
-            className="w-full max-w-md section-card rounded-t-3xl p-4 space-y-3 max-h-[80vh] overflow-auto"
-            onClick={(e) => e.stopPropagation()}
+      {open &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[70] bg-black/50 flex items-end sm:items-center justify-center"
+            onClick={() => setOpen(false)}
           >
-            <div className="flex justify-between items-center">
-              <h2 className="font-bold">Куда доставить?</h2>
-              <button
-                aria-label="Закрыть адрес"
-                onClick={() => setOpen(false)}
-                className="w-10 h-10"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-xs text-tg-hint">
-              Доставка по Москве и Московской области. Введите улицу и дом.
-            </p>
-            <input
-              aria-label="Улица и дом"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setError("");
-              }}
-              className="input"
-              placeholder="Москва, улица, дом"
-              autoFocus
-            />
-            {busy && <p className="text-xs text-tg-hint">Проверяем адрес…</p>}
-            {suggestions.map((s) => (
-              <button
-                key={s.id}
-                disabled={busy}
-                onClick={() => void select(s.id)}
-                className="w-full p-3 text-sm text-left rounded-xl bg-tg-secondary-bg"
-              >
-                {s.value}
-              </button>
-            ))}
-            {error && (
-              <p role="alert" className="text-sm text-red-500">
-                {error}
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-label="Адрес доставки"
+              className="w-full max-w-md section-card rounded-t-3xl p-4 space-y-3 max-h-[80vh] overflow-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center">
+                <h2 className="font-bold">Куда доставить?</h2>
+                <button
+                  aria-label="Закрыть адрес"
+                  onClick={() => setOpen(false)}
+                  className="w-10 h-10"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs text-tg-hint">
+                Доставка по Москве и Московской области. Введите улицу и дом.
               </p>
-            )}
-            <p className="text-xs text-tg-hint">
-              Время предварительное: рассчитывается от ближайшего доступного
-              склада без учёта пробок.
-            </p>
-          </section>
-        </div>
-      )}
+              <input
+                aria-label="Улица и дом"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setError("");
+                }}
+                className="input"
+                placeholder="Москва, улица, дом"
+                autoFocus
+              />
+              {busy && <p className="text-xs text-tg-hint">Проверяем адрес…</p>}
+              {suggestions.map((s) => (
+                <button
+                  key={s.id}
+                  disabled={busy}
+                  onClick={() => void select(s.id)}
+                  className="w-full p-3 text-sm text-left rounded-xl bg-tg-secondary-bg"
+                >
+                  {s.value}
+                </button>
+              ))}
+              {error && (
+                <p role="alert" className="text-sm text-red-500">
+                  {error}
+                </p>
+              )}
+              <p className="text-xs text-tg-hint">
+                Время предварительное: рассчитывается от ближайшего доступного
+                склада без учёта пробок.
+              </p>
+            </section>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

@@ -56,7 +56,7 @@ export function Auth() {
         ? "Создать аккаунт"
         : "Войти в магазин";
   return (
-    <div className="app-container px-4 pt-6 pb-24">
+    <div className="app-container auth-page px-4 pt-6 pb-24">
       <Link to={user ? "/profile" : "/"} className="text-sm text-tg-hint mb-8">
         ← {user ? "Профиль" : "В магазин"}
       </Link>
