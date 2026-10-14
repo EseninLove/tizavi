@@ -115,6 +115,7 @@ export function StorefrontHome({
       </section>
       {categories.some((c) => c.id !== "all") && (
         <section
+          id="market-categories"
           className="market-categories"
           aria-labelledby="market-categories-title"
         >

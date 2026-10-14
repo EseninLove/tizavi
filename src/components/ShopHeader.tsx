@@ -1,3 +1,4 @@
+import { CategoriesLink } from "./CategoriesLink";
 import { BrandLogo } from "./BrandLogo";
 import { Link, NavLink } from "react-router-dom";
 import { useApp } from "../context/AppContext";
@@ -24,19 +25,23 @@ export function ShopHeader() {
           <BrandLogo />
           <span className="shop-brand-tagline">Продукты с доставкой</span>
         </Link>
+        <CategoriesLink />
         <nav aria-label="Навигация магазина">
           {links.map(({ to, label, Icon, count }) => (
             <NavLink
               key={to}
               to={to}
               end={to === "/"}
+              aria-label={
+                to === "/cart" ? `Корзина, позиций: ${cartCount}` : label
+              }
               className={({ isActive }) =>
                 `shop-nav-link ${isActive ? "active" : ""}`
               }
             >
               <Icon className="w-5 h-5" />
-              <span>{label}</span>
-              {count > 0 && (
+              <span className="shop-nav-label">{label}</span>
+              {(count > 0 || to === "/cart") && (
                 <span className="shop-nav-badge">
                   {count > 99 ? "99+" : count}
                 </span>

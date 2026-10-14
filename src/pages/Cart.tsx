@@ -26,7 +26,9 @@ export function Cart() {
     return (
       <div className="app-container cart-page">
         <header className="px-4 pt-4 pb-2">
-          <h1 className="text-xl font-bold text-tg-text">Корзина</h1>
+          <h1 className="cart-title text-xl font-bold text-tg-text">
+            Корзина <span className="cart-title-count">{cart.length}</span>
+          </h1>
         </header>
         <main className="scroll-area">
           <EmptyState
@@ -45,7 +47,9 @@ export function Cart() {
     <div className="app-container cart-page">
       <header className="flex items-center justify-between px-4 pt-4 pb-2">
         <div>
-          <h1 className="text-xl font-bold text-tg-text">Корзина</h1>
+          <h1 className="cart-title text-xl font-bold text-tg-text">
+            Корзина <span className="cart-title-count">{cart.length}</span>
+          </h1>
           <p className="text-xs text-tg-hint">
             {cart.length}{" "}
             {pluralize(cart.length, ["позиция", "позиции", "позиций"])}

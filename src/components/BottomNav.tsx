@@ -56,7 +56,7 @@ export function BottomNav() {
             >
               <div className="relative">
                 <Icon className="w-6 h-6" />
-                {badge > 0 && (
+                {(badge > 0 || path === "/cart") && (
                   <span className="absolute -top-2 -right-2.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold rounded-full bg-tg-button text-tg-button-text">
                     {badge > 99 ? "99+" : badge}
                   </span>
