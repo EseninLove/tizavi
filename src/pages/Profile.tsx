@@ -3,23 +3,48 @@ import { Link, useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import { formatPrice, formatDate, pluralize } from "../utils/format";
-import { EmptyState } from "../components/EmptyState";
 import { orderStatusLabel, paymentStatusLabels } from "../utils/orders";
 import { useProducts } from "../context/ProductsContext";
 import { useState } from "react";
+import { CartIcon, HeartIcon, UserIcon, CheckIcon } from "../components/Icons";
+
+function PackageIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
+      <path
+        d="m3 7 9-4 9 4v10l-9 4-9-4V7Zm0 0 9 4 9-4M12 11v10M7.5 5l9 4v4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+function SettingsIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
+      <path d="M4 7h9m4 0h3M4 17h3m4 0h9M13 4v6M7 14v6" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export function Profile() {
   const navigate = useNavigate();
   const { user: account, loading: authLoading } = useAuth();
-  const user = account
-    ? {
-        first_name: account.name,
-        last_name: "",
-        photo_url: account.photoUrl,
-        username: account.username,
-        language_code: "",
-      }
-    : null;
   const {
     orders,
     wishlist,
@@ -36,318 +61,328 @@ export function Profile() {
     days,
     loading: subLoading,
   } = useSubscription();
-  const [showAllOrders, setShowAllOrders] = useState(false);
   const { products, loading: productsLoading } = useProducts();
+  const [showAllOrders, setShowAllOrders] = useState(false);
   const [repeatMessage, setRepeatMessage] = useState("");
   const repeat = (order: (typeof orders)[number]) => {
-    let skipped = 0;
+    let added = 0;
     for (const item of order.items) {
       const product = products.find(
         (p) => p.id === item.product.id && p.inStock,
       );
-      if (product) addToCart(product, item.quantity);
-      else skipped++;
+      if (product) {
+        addToCart(product, item.quantity);
+        added++;
+      }
     }
+    const skipped = order.items.length - added;
     setRepeatMessage(
-      skipped
-        ? `Доступные товары добавлены. ${skipped} позиций сейчас недоступны.`
-        : "Товары добавлены по текущим ценам.",
+      !added
+        ? "Товары этого заказа сейчас недоступны."
+        : skipped
+          ? `Доступные товары добавлены. ${skipped} позиций сейчас недоступны.`
+          : "Товары добавлены по текущим ценам.",
     );
   };
-
-  const displayName = user
-    ? `${user.first_name}${user.last_name ? " " + user.last_name : ""}`
-    : "Гость";
-  const initials = (user?.first_name?.[0] ?? "Г").toUpperCase();
-
   const visibleOrders = showAllOrders ? orders : orders.slice(0, 3);
+  const initials =
+    account?.name
+      ?.trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase() || "Т";
+  const scrollToOrders = () =>
+    document
+      .getElementById("profile-orders")
+      ?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
 
   return (
-    <div className="app-container profile-page">
-      <header className="px-4 pt-4 pb-2 flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-tg-text">Профиль</h1>
+    <div className="app-container profile-page profile-studio">
+      <header className="profile-page-heading">
+        <div>
+          <span className="market-eyebrow">Ваше пространство</span>
+          <h1>Личный кабинет</h1>
+        </div>
         <Link to="/profile/settings" className="profile-settings-link">
-          <span aria-hidden="true">⚙</span> Настройки
+          <SettingsIcon />
+          <span>Настройки</span>
         </Link>
       </header>
-
       <main className="scroll-area px-4 profile-layout">
-        <div className="profile-summary">
-          <section className="section-card p-4 flex items-center gap-4 profile-identity">
-            {user?.photo_url ? (
-              <img
-                src={user.photo_url}
-                alt={displayName}
-                className="w-16 h-16 rounded-full object-cover"
+        <section className="profile-welcome" aria-label="Ваш профиль">
+          <div className="profile-welcome-copy">
+            <span className="profile-welcome-label">
+              тизави.рф · с заботой о вашем времени
+            </span>
+            {authLoading ? (
+              <div
+                className="profile-name-loading skeleton"
+                aria-label="Загружаем профиль"
               />
             ) : (
-              <div className="w-16 h-16 rounded-full bg-tg-button text-tg-button-text flex items-center justify-center text-2xl font-bold">
-                {initials}
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-tg-text truncate">
-                {displayName}
+              <h2>
+                {account ? (
+                  <>
+                    Рады вас видеть,
+                    <br />
+                    <em>{account.name || "покупатель"}.</em>
+                  </>
+                ) : (
+                  <>
+                    Любимые продукты.
+                    <br />
+                    <em>Всё под рукой.</em>
+                  </>
+                )}
               </h2>
-              {user?.username && (
-                <p className="text-sm text-tg-hint">@{user.username}</p>
-              )}
-              {user?.language_code && (
-                <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-md bg-tg-secondary-bg text-tg-hint">
-                  {user.language_code.toUpperCase()}
-                </span>
+            )}
+            <p>
+              {account
+                ? "Ваши покупки, любимые продукты и планы на вкусный день."
+                : "Войдите, чтобы сохранять историю покупок, повторять заказы и управлять подпиской."}
+            </p>
+            {!authLoading && (
+              <Link
+                className="profile-welcome-action"
+                to={account ? "/" : "/auth"}
+              >
+                {account ? "За покупками" : "Войти или зарегистрироваться"}
+                <span aria-hidden="true">↗</span>
+              </Link>
+            )}
+          </div>
+          <div className="profile-avatar-scene" aria-hidden="true">
+            <div className="profile-avatar-orbit" />
+            <div className="profile-avatar">
+              {account?.photoUrl ? (
+                <img src={account.photoUrl} alt="" />
+              ) : account ? (
+                initials
+              ) : (
+                <UserIcon className="w-12 h-12" />
               )}
             </div>
-          </section>
-
-          {!account && !authLoading && (
-            <section className="section-card p-4 space-y-3">
-              <h2 className="font-bold">Войдите в аккаунт</h2>
-              <p className="text-sm text-tg-hint">
-                Сохраняйте историю покупок и управляйте подпиской.
-              </p>
-              <button
-                className="btn-primary w-full"
-                onClick={() => navigate("/auth")}
-              >
-                Войти или зарегистрироваться
-              </button>
-            </section>
-          )}
-          <section
-            className={`section-card p-4 flex items-center gap-3 profile-subscription ${
-              subscribed ? "border-2 border-green-500" : ""
-            }`}
-          >
-            {subLoading ? (
-              <>
-                <div className="skeleton w-10 h-10 rounded-full" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="skeleton h-4 w-32" />
-                  <div className="skeleton h-3 w-40" />
-                </div>
-              </>
-            ) : subscribed ? (
-              <>
-                <span className="w-10 h-10 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center text-xl shrink-0">
-                  ✓
+            {account && (
+              <span className="profile-avatar-check">
+                <CheckIcon className="w-4 h-4" />
+              </span>
+            )}
+          </div>
+        </section>
+        <div className="profile-summary">
+          <section className="profile-quicklinks" aria-label="Ваши покупки">
+            {[
+              {
+                label: "В корзине",
+                count: cartCount,
+                Icon: CartIcon,
+                action: () => navigate("/cart"),
+              },
+              {
+                label: "Избранное",
+                count: wishlist.length,
+                Icon: HeartIcon,
+                action: () => navigate("/wishlist"),
+              },
+              {
+                label: "Заказов",
+                count: orders.length,
+                Icon: PackageIcon,
+                action: scrollToOrders,
+              },
+            ].map(({ label, count, Icon, action }) => (
+              <button key={label} onClick={action}>
+                <Icon className="profile-quick-icon" />
+                <strong>{count}</strong>
+                <span>{label}</span>
+                <span className="profile-quick-arrow" aria-hidden="true">
+                  ↗
                 </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold text-tg-text">
-                    Подписка оформлена
-                  </div>
-                  {expiresAt && (
-                    <div className="text-xs text-tg-hint mt-0.5">
-                      Действует до {formatDate(new Date(expiresAt).getTime())}
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => navigate("/subscribe")}
-                  className="px-3 py-2 rounded-xl bg-tg-secondary-bg text-xs font-semibold text-tg-text active:scale-95 transition-transform shrink-0"
-                >
-                  Продлить
-                </button>
-              </>
+              </button>
+            ))}
+          </section>
+          <section className="profile-membership" aria-label="Подписка">
+            <div className="profile-membership-top">
+              <span>Ваша подписка</span>
+              <span className="profile-membership-symbol" aria-hidden="true">
+                {subscribed ? "✓" : "↗"}
+              </span>
+            </div>
+            {subLoading ? (
+              <p aria-live="polite">Проверяем подписку…</p>
             ) : (
               <>
-                <span className="w-10 h-10 rounded-full bg-tg-secondary-bg text-tg-hint flex items-center justify-center text-xl shrink-0">
-                  💳
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold text-tg-text">
-                    Подписка не оформлена
-                  </div>
-                  <div className="text-xs text-tg-hint mt-0.5">
-                    {formatPrice(priceRub)} на {days} дней — без неё заказы
-                    недоступны
-                  </div>
-                </div>
-                <button
-                  onClick={() => navigate("/subscribe")}
-                  className="px-3 py-2 rounded-xl bg-tg-button text-tg-button-text text-xs font-semibold active:scale-95 transition-transform shrink-0"
-                >
-                  Оформить
-                </button>
+                <h2>
+                  {subscribed
+                    ? "Всё готово\nдля покупок"
+                    : "Откройте доступ\nк заказам"}
+                </h2>
+                <p>
+                  {subscribed
+                    ? expiresAt
+                      ? `Активна до ${formatDate(new Date(expiresAt).getTime())}`
+                      : "Ваша подписка активна"
+                    : `${formatPrice(priceRub)} на ${days} дней. Подписка нужна для оформления заказов.`}
+                </p>
+                <Link to="/subscribe">
+                  {subscribed ? "Управлять подпиской" : "Оформить подписку"}
+                  <span aria-hidden="true">→</span>
+                </Link>
               </>
             )}
           </section>
-
-          <section className="grid grid-cols-3 gap-2 profile-stats">
-            <button
-              onClick={() => navigate("/cart")}
-              className="section-card p-3 flex flex-col items-center active:scale-95 transition-transform"
-            >
-              <span className="text-2xl font-bold text-tg-button">
-                {cartCount}
-              </span>
-              <span className="text-xs text-tg-hint mt-0.5">В корзине</span>
-            </button>
-            <button
-              onClick={() => navigate("/wishlist")}
-              className="section-card p-3 flex flex-col items-center active:scale-95 transition-transform"
-            >
-              <span className="text-2xl font-bold text-tg-button">
-                {wishlist.length}
-              </span>
-              <span className="text-xs text-tg-hint mt-0.5">Избранное</span>
-            </button>
-            <div className="section-card p-3 flex flex-col items-center">
-              <span className="text-2xl font-bold text-tg-button">
-                {orders.length}
-              </span>
-              <span className="text-xs text-tg-hint mt-0.5">Заказов</span>
-            </div>
-          </section>
         </div>
-        <section className="profile-orders">
-          <div className="flex items-center justify-between mb-2 px-1">
-            <h2 className="text-base font-bold text-tg-text">Мои заказы</h2>
+        <section id="profile-orders" className="profile-orders">
+          <div className="profile-orders-heading">
+            <div>
+              <span className="market-eyebrow">История покупок</span>
+              <h2>
+                Мои заказы <span>{orders.length}</span>
+              </h2>
+            </div>
             {orders.length > 3 && (
-              <button
-                onClick={() => setShowAllOrders((s) => !s)}
-                className="text-sm text-tg-button font-medium"
-              >
-                {showAllOrders ? "Свернуть" : "Все"}
+              <button onClick={() => setShowAllOrders((s) => !s)}>
+                {showAllOrders ? "Свернуть" : "Показать все"}{" "}
+                <span aria-hidden="true">↗</span>
               </button>
             )}
           </div>
-
           {repeatMessage && (
-            <p role="status" className="text-sm text-tg-text mb-3">
-              {repeatMessage}{" "}
-              <button
-                onClick={() => navigate("/cart")}
-                className="text-tg-link"
-              >
-                В корзину →
-              </button>
+            <p role="status" className="profile-feedback">
+              {repeatMessage} <Link to="/cart">В корзину →</Link>
             </p>
           )}
           {ordersError && (
-            <p className="text-sm text-red-500 mb-3">
+            <p role="alert" className="profile-feedback profile-feedback-error">
               {ordersError}{" "}
               <button onClick={() => void refreshOrders().catch(() => {})}>
-                Повторить
+                Повторить загрузку
               </button>
             </p>
           )}
-          {ordersLoading && orders.length === 0 ? (
-            <p className="text-sm text-tg-hint">Загружаем заказы…</p>
-          ) : visibleOrders.length > 0 ? (
+          {ordersLoading && !orders.length ? (
+            <div className="profile-orders-loading" aria-live="polite">
+              <span>Загружаем заказы…</span>
+              <div className="skeleton" />
+              <div className="skeleton" />
+            </div>
+          ) : visibleOrders.length ? (
             <div className="profile-order-list">
               {visibleOrders.map((order) => (
-                <div key={order.id} className="section-card p-4">
-                  <div className="flex items-start justify-between mb-2">
+                <article key={order.id} className="profile-order-card">
+                  <div className="profile-order-top">
                     <div>
-                      <h3 className="text-sm font-semibold text-tg-text">
-                        {order.id}
-                      </h3>
-                      <p className="text-xs text-tg-hint">
-                        {formatDate(order.createdAt)}
-                      </p>
+                      <h3>{order.id}</h3>
+                      <p>{formatDate(order.createdAt)}</p>
                     </div>
-                    <span className="px-2 py-0.5 text-xs font-medium rounded-md bg-green-100 text-green-700">
+                    <span
+                      className={`profile-order-status profile-order-status-${order.status === "pending" ? order.paymentStatus : order.status}`}
+                    >
                       {orderStatusLabel(order)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="profile-order-products">
                     {order.items.slice(0, 4).map(({ product }) => (
                       <img
                         key={product.id}
                         src={product.image}
                         alt={product.name}
-                        className="w-10 h-10 rounded-lg object-cover"
+                        loading="lazy"
                       />
                     ))}
                     {order.items.length > 4 && (
-                      <div className="w-10 h-10 rounded-lg bg-tg-secondary-bg flex items-center justify-center text-xs text-tg-hint font-medium">
-                        +{order.items.length - 4}
-                      </div>
+                      <span>+{order.items.length - 4}</span>
                     )}
+                    <div className="profile-order-amount">
+                      <strong>{formatPrice(order.payableTotal)}</strong>
+                      <span>
+                        {order.items.length}{" "}
+                        {pluralize(order.items.length, [
+                          "позиция",
+                          "позиции",
+                          "позиций",
+                        ])}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-tg-separator">
-                    <span className="text-xs text-tg-hint">
-                      {order.items.length}{" "}
-                      {pluralize(order.items.length, [
-                        "позиция",
-                        "позиции",
-                        "позиций",
-                      ])}
-                    </span>
-                    <span className="text-sm font-bold text-tg-text">
-                      {formatPrice(order.payableTotal)}
-                    </span>
-                  </div>
-                  <p className="text-xs text-tg-hint mt-2">
-                    {paymentStatusLabels[order.paymentStatus]}
-                  </p>
-                  <div className="flex gap-2 mt-3">
-                    <button
-                      onClick={() => navigate(`/order-success/${order.id}`)}
-                      className="btn-secondary flex-1 text-xs"
+                  <div className="profile-order-bottom">
+                    <span
+                      className={`profile-payment profile-payment-${order.paymentStatus}`}
                     >
-                      Подробнее
-                    </button>
-                    <button
-                      disabled={productsLoading}
-                      onClick={() => repeat(order)}
-                      className="btn-primary flex-1 text-xs"
-                    >
-                      Повторить заказ
-                    </button>
+                      {paymentStatusLabels[order.paymentStatus]}
+                    </span>
+                    <div>
+                      <Link to={`/order-success/${order.id}`}>Подробнее</Link>
+                      <button
+                        disabled={productsLoading}
+                        onClick={() => repeat(order)}
+                      >
+                        Повторить <span aria-hidden="true">↗</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </article>
               ))}
             </div>
           ) : (
-            <EmptyState
-              icon="📦"
-              title="Заказов пока нет"
-              description="Оформите первый заказ, и он появится здесь"
-              actionLabel="В каталог"
-              onAction={() => navigate("/")}
-            />
+            !ordersError && (
+              <div className="profile-empty-orders">
+                <div className="profile-empty-art">
+                  <PackageIcon />
+                </div>
+                <span className="market-eyebrow">
+                  Всё начинается с первого заказа
+                </span>
+                <h3>
+                  {!account && !authLoading
+                    ? "Здесь будет ваша история"
+                    : "Что-нибудь вкусное?"}
+                </h3>
+                <p>
+                  {!account && !authLoading
+                    ? "Войдите в аккаунт — и ваши заказы будут доступны в одном месте."
+                    : "Выберите продукты в каталоге. После оформления заказ появится здесь, и его можно будет легко повторить."}
+                </p>
+                <Link to={!account && !authLoading ? "/auth" : "/"}>
+                  {!account && !authLoading
+                    ? "Войти в аккаунт"
+                    : "Открыть каталог"}
+                  <span aria-hidden="true">↗</span>
+                </Link>
+              </div>
+            )
           )}
         </section>
-
-        <section className="section-card divide-y divide-tg-separator profile-links">
-          <button
-            onClick={() => navigate("/legal/offer")}
-            className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors"
-          >
-            <span className="text-sm text-tg-text">📄 Договор-оферта</span>
-            <span className="text-tg-hint">›</span>
-          </button>
-          <button
-            onClick={() => navigate("/legal/privacy")}
-            className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors"
-          >
-            <span className="text-sm text-tg-text">
-              🔒 Политика конфиденциальности
-            </span>
-            <span className="text-tg-hint">›</span>
-          </button>
-          <button
-            onClick={() => navigate("/legal/terms")}
-            className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors"
-          >
-            <span className="text-sm text-tg-text">
-              📋 Пользовательское соглашение
-            </span>
-            <span className="text-tg-hint">›</span>
-          </button>
-          <button
-            onClick={() => navigate("/support")}
-            className="w-full flex items-center justify-between px-4 py-3.5 text-left active:bg-tg-secondary-bg transition-colors"
-          >
-            <span className="text-sm text-tg-text">🎧 Поддержка</span>
-            <span className="text-tg-hint">›</span>
-          </button>
+        <section className="profile-links">
+          <Link to="/support" className="profile-help">
+            <span className="market-eyebrow">Рядом, если нужно</span>
+            <h2>
+              Поможем разобраться <span aria-hidden="true">↗</span>
+            </h2>
+            <p>Вопросы о заказах, доставке или подписке.</p>
+          </Link>
+          <div className="profile-documents">
+            {[
+              ["offer", "Договор-оферта"],
+              ["privacy", "Конфиденциальность"],
+              ["terms", "Пользовательское соглашение"],
+            ].map(([id, label]) => (
+              <Link key={id} to={`/legal/${id}`}>
+                {label}
+                <span aria-hidden="true">↗</span>
+              </Link>
+            ))}
+          </div>
         </section>
-
-        <p className="text-center text-xs text-tg-hint pt-2 profile-footer">
-          Tizavi Shop · v1.0.0
+        <p className="profile-footer">
+          тизави.рф <span>Для ваших вкусных дней</span>
         </p>
       </main>
     </div>
