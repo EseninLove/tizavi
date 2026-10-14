@@ -1,3 +1,4 @@
+import { StorefrontHome, StorefrontFooter } from "../components/StorefrontHome";
 import { useAuth } from "../context/AuthContext";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -134,11 +135,37 @@ export function Catalog() {
     setMaxPrice("");
     setSort("default");
   };
+  const [browseRequest, setBrowseRequest] = useState(0);
+  useEffect(() => {
+    if (browseRequest)
+      document.getElementById("catalog-products")?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
+  }, [browseRequest]);
+  const browse = (nextCategory = "all", nextSection = "all") => {
+    reset();
+    setCategory(nextCategory);
+    setSection(nextSection);
+    setBrowseRequest((v) => v + 1);
+  };
+  const showHome =
+    category === "all" &&
+    section === "all" &&
+    !search &&
+    !brand &&
+    !minPrice &&
+    !maxPrice &&
+    !stock &&
+    !showSearch &&
+    !filters;
   const selected =
     categories.find((c) => c.id === category)?.name || "Все категории";
   return (
-    <div className="app-container catalog-page">
-      <header className="sticky top-0 z-40 bg-tg-secondary-bg/95 backdrop-blur-lg px-4 pt-3 pb-3 space-y-2">
+    <div className="app-container catalog-page market-page">
+      <div className="market-topline">
         {!miniApp && (
           <div className="catalog-mobile-account flex items-center justify-between">
             <strong className="text-sm">Tizavi</strong>
@@ -158,10 +185,36 @@ export function Catalog() {
         <div className="catalog-delivery">
           <DeliveryAddress />
         </div>
+      </div>
+      {showHome && (
+        <StorefrontHome
+          categories={categories}
+          products={products}
+          onBrowse={browse}
+        />
+      )}
+      <header
+        id="catalog-products"
+        className="sticky top-0 z-40 bg-tg-secondary-bg/95 backdrop-blur-lg px-4 pt-3 pb-3 space-y-2"
+      >
         <div className="catalog-title-row">
           <div className="catalog-heading">
-            <h1>Каталог</h1>
-            <p>{selected}</p>
+            <h2 aria-level={showHome ? 2 : 1}>
+              {category !== "all"
+                ? selected
+                : section === "sale"
+                  ? "Акции"
+                  : section === "popular"
+                    ? "Популярное"
+                    : section === "seasonal"
+                      ? "Сезонное"
+                      : "Наши продукты"}
+            </h2>
+            <p>
+              {category !== "all"
+                ? "Выбрано для вас"
+                : "Выбирайте то, что любите"}
+            </p>
           </div>
           <div className="catalog-actions">
             <button
@@ -187,6 +240,7 @@ export function Catalog() {
               aria-expanded={showSearch}
               onClick={() => {
                 setShowSearch((v) => !v);
+                setBrowseRequest((v) => v + 1);
                 if (showSearch) setSearch("");
               }}
             >
@@ -197,7 +251,10 @@ export function Catalog() {
               className={`catalog-control ${filters ? "active" : ""}`}
               aria-label="Фильтры"
               aria-expanded={filters}
-              onClick={() => setFilters((v) => !v)}
+              onClick={() => {
+                setFilters((v) => !v);
+                setBrowseRequest((v) => v + 1);
+              }}
             >
               <svg
                 viewBox="0 0 24 24"
@@ -276,7 +333,10 @@ export function Catalog() {
           ].map(([id, label]) => (
             <button
               key={id}
-              onClick={() => setSection(id)}
+              onClick={() => {
+                setSection(id);
+                setBrowseRequest((v) => v + 1);
+              }}
               className={`chip ${section === id ? "chip-active" : "chip-inactive"}`}
             >
               {label}
@@ -387,6 +447,7 @@ export function Catalog() {
           />
         )}
       </main>
+      {showHome && <StorefrontFooter />}
       {cartCount > 0 && (
         <div className="fixed left-1/2 -translate-x-1/2 w-full max-w-md px-4 z-40 floating-cart">
           <button
@@ -427,8 +488,7 @@ export function Catalog() {
               <button
                 key={c.id}
                 onClick={() => {
-                  setCategory(c.id);
-                  setSearch("");
+                  browse(c.id);
                   setDrawer(false);
                 }}
                 className={`w-full flex items-center gap-3 rounded-xl p-3 mb-2 text-left ${category === c.id ? "bg-tg-button text-tg-button-text" : "bg-tg-secondary-bg"}`}

@@ -9,6 +9,7 @@ import { SubscriptionProvider } from "./context/SubscriptionContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { TelegramProvider } from "./lib/telegram";
 import "./index.css";
+import "./storefront.css";
 import { DeliveryProvider } from "./context/DeliveryContext";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
