@@ -1,3 +1,4 @@
+import { BrandLogo } from "./BrandLogo";
 import { Link, NavLink } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { useAuth } from "../context/AuthContext";
@@ -19,9 +20,9 @@ export function ShopHeader() {
   return (
     <header className="shop-desktop-header">
       <div className="shop-desktop-header-inner">
-        <Link to="/" className="shop-brand" aria-label="Tizavi — в каталог">
-          <strong>Tizavi</strong>
-          <span>Продукты с доставкой</span>
+        <Link to="/" className="shop-brand" aria-label="тизави.рф — в каталог">
+          <BrandLogo />
+          <span className="shop-brand-tagline">Продукты с доставкой</span>
         </Link>
         <nav aria-label="Навигация магазина">
           {links.map(({ to, label, Icon, count }) => (

@@ -435,7 +435,7 @@
   font-weight: 700;
   letter-spacing: -1px;
 }
-.market-footer-brand span {
+.market-footer-brand .market-footer-tagline {
   display: block;
   font-size: 10px;
   letter-spacing: 0;
@@ -632,4 +632,43 @@
 
 .shop-shell .market-page > header .input {
   max-width: none;
+}
+
+/* Local, licensed font keeps the wordmark available without third-party requests. */
+@font-face {
+  font-family: "Russo One";
+  src: url("/fonts/russo-one-regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+.brand-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-family: "Russo One", sans-serif;
+  font-size: 28px;
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: -0.7px;
+  line-height: 1.1;
+  color: var(--tg-text);
+}
+.brand-wordmark .brand-wordmark-domain {
+  font-size: 0.67em;
+  letter-spacing: -0.2px;
+  color: var(--tg-hint);
+  margin-left: 2px;
+}
+.market-footer-brand > .brand-wordmark {
+  font-size: 32px;
+}
+.catalog-mobile-account > .brand-wordmark {
+  font-size: 25px;
+}
+@media (min-width: 768px) and (max-width: 900px) {
+  .shop-brand > .brand-wordmark {
+    font-size: 25px;
+  }
 }

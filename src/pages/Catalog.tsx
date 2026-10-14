@@ -1,3 +1,4 @@
+import { BrandLogo } from "../components/BrandLogo";
 import { StorefrontHome, StorefrontFooter } from "../components/StorefrontHome";
 import { useAuth } from "../context/AuthContext";
 import { useEffect, useMemo, useState } from "react";
@@ -168,7 +169,7 @@ export function Catalog() {
       <div className="market-topline">
         {!miniApp && (
           <div className="catalog-mobile-account flex items-center justify-between">
-            <strong className="text-sm">Tizavi</strong>
+            <BrandLogo />
             <button
               disabled={authLoading}
               className="text-xs px-3 py-2 rounded-xl bg-tg-section-bg"

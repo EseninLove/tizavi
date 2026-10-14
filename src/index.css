@@ -217,7 +217,7 @@
     letter-spacing: -1px;
     line-height: 1.15;
   }
-  .shop-brand span {
+  .shop-brand .shop-brand-tagline {
     font-size: 11px;
     color: var(--tg-hint);
     margin-top: 5px;
@@ -511,7 +511,7 @@
     width: calc(100% - 32px);
     gap: 10px;
   }
-  .shop-brand span {
+  .shop-brand .shop-brand-tagline {
     display: none;
   }
   .shop-nav-link {

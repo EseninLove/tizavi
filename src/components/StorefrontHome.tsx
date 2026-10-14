@@ -1,3 +1,4 @@
+import { BrandLogo } from "./BrandLogo";
 import { Link } from "react-router-dom";
 import type { Category, Product } from "../types";
 import { CartIcon, HeartIcon, HomeIcon } from "./Icons";
@@ -233,7 +234,8 @@ export function StorefrontFooter() {
       </section>
       <footer className="market-footer">
         <Link to="/" className="market-footer-brand">
-          Tizavi<span>Продукты с доставкой</span>
+          <BrandLogo />
+          <span className="market-footer-tagline">Продукты с доставкой</span>
         </Link>
         <div>
           <Link to="/support">Помощь</Link>
