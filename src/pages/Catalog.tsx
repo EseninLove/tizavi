@@ -23,9 +23,8 @@ export function Catalog() {
     { cartCount, cartTotal } = useApp(),
     navigate = useNavigate();
   const [category, setCategory] = useState<string>(
-      () => initial().category || "all",
-    ),
-    [section, setSection] = useState<string>(() => initial().section || "all");
+    () => initial().category || "all",
+  );
   const [filters, setFilters] = useState(false);
   const [brand, setBrand] = useState<string>(() => initial().brand || ""),
     [minPrice, setMinPrice] = useState<string>(() => initial().minPrice || ""),
@@ -37,7 +36,6 @@ export function Catalog() {
       "tizavi_catalog",
       JSON.stringify({
         category,
-        section,
         brand,
         minPrice,
         maxPrice,
@@ -45,7 +43,7 @@ export function Catalog() {
         sort,
       }),
     );
-  }, [category, section, brand, minPrice, maxPrice, stock, sort]);
+  }, [category, brand, minPrice, maxPrice, stock, sort]);
   const brands = useMemo(
     () =>
       [
@@ -64,22 +62,14 @@ export function Catalog() {
         (minPrice === "" || p.price >= Number(minPrice)) &&
         (maxPrice === "" || p.price <= Number(maxPrice)),
     );
-    if (section === "sale")
-      result = result.filter((p) => p.oldPrice && p.oldPrice > p.price);
-    if (section === "popular")
-      result = result
-        .filter((p) => p.popular || (p.purchaseCount || 0) > 0)
-        .sort((a, b) => (b.purchaseCount || 0) - (a.purchaseCount || 0));
-    if (section === "seasonal") result = result.filter((p) => p.seasonal);
     if (sort === "price-up") result.sort((a, b) => a.price - b.price);
     if (sort === "price-down") result.sort((a, b) => b.price - a.price);
     if (sort === "popular")
       result.sort((a, b) => (b.purchaseCount || 0) - (a.purchaseCount || 0));
     return result;
-  }, [products, category, section, brand, stock, minPrice, maxPrice, sort]);
+  }, [products, category, brand, stock, minPrice, maxPrice, sort]);
   const reset = () => {
     setCategory("all");
-    setSection("all");
     setBrand("");
     setStock(false);
     setMinPrice("");
@@ -96,10 +86,9 @@ export function Catalog() {
         block: "start",
       });
   }, [browseRequest]);
-  const browse = (nextCategory = "all", nextSection = "all") => {
+  const browse = (nextCategory = "all") => {
     reset();
     setCategory(nextCategory);
-    setSection(nextSection);
     setBrowseRequest((v) => v + 1);
   };
   const location = useLocation();
@@ -130,26 +119,6 @@ export function Catalog() {
         className="sticky top-0 z-40 bg-tg-secondary-bg/95 backdrop-blur-lg px-4 pt-3 pb-3 space-y-2"
       >
         <div className="market-product-toolbar">
-          <div className="catalog-section-tabs flex gap-2 overflow-auto no-scrollbar">
-            {[
-              ["all", "Все"],
-              ["sale", "Акции"],
-              ["popular", "Популярное"],
-              ["seasonal", "Сезонное"],
-            ].map(([id, label]) => (
-              <button
-                key={id}
-                onClick={() => {
-                  setSection(id);
-                  setBrowseRequest((v) => v + 1);
-                }}
-                aria-pressed={section === id}
-                className={`chip ${section === id ? "chip-active" : "chip-inactive"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
           <button
             className={`catalog-control ${filters ? "active" : ""}`}
             aria-label="Фильтры"
@@ -274,7 +243,7 @@ export function Catalog() {
           <EmptyState
             icon="🔍"
             title="Ничего не найдено"
-            description="Выберите другую подборку или сбросьте фильтры"
+            description="Выберите другую категорию или сбросьте фильтры"
             actionLabel="Показать все товары"
             onAction={reset}
           />

@@ -122,55 +122,6 @@ export function StorefrontHome({
 export function StorefrontFooter() {
   return (
     <div className="market-bottom">
-      <section
-        className="market-delivery-info"
-        aria-labelledby="market-delivery-title"
-      >
-        <div>
-          <span className="market-eyebrow">Просто и удобно</span>
-          <h2 id="market-delivery-title">
-            Покупки — онлайн.
-            <br />
-            <em>Больше времени — себе.</em>
-          </h2>
-          <p>
-            Выбирайте продукты дома, на работе или по дороге. Магазин доступен в
-            браузере и в Telegram.
-          </p>
-          <Link className="market-text-link" to="/support">
-            Есть вопрос? Мы поможем <span aria-hidden="true">↗</span>
-          </Link>
-        </div>
-        <ol className="market-steps">
-          <li>
-            <span>01</span>
-            <div>
-              <h3>Выберите продукты</h3>
-              <p>Найдите нужное в категориях и добавьте в корзину.</p>
-            </div>
-          </li>
-          <li>
-            <span>02</span>
-            <div>
-              <h3>Укажите адрес</h3>
-              <p>
-                Стоимость и доступное время доставки появятся после расчёта
-                адреса.
-              </p>
-            </div>
-          </li>
-          <li>
-            <span>03</span>
-            <div>
-              <h3>Оформите заказ</h3>
-              <p>
-                Для заказа нужна подписка. Статус покупки можно посмотреть в
-                профиле.
-              </p>
-            </div>
-          </li>
-        </ol>
-      </section>
       <section className="market-benefits" aria-label="Возможности магазина">
         <div>
           <CartIcon className="w-6 h-6" />
