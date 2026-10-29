@@ -13,6 +13,7 @@ export { sql };
 
 export interface AdminUser {
   telegramId: number;
+  userId?: number;
   username?: string;
   firstName?: string;
   role: string;

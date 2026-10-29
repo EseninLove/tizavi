@@ -35,6 +35,15 @@ test("administrative sessions enforce owner permissions, CSRF, expiry, revocatio
     };
   };
   (pool as any).connect = async () => ({ query, release() {} });
+  const accountId = async (telegramId: number) =>
+    Number(
+      (
+        await query(
+          "INSERT INTO users(telegram_id,first_name) VALUES($1,'Local employee') ON CONFLICT(telegram_id) DO UPDATE SET last_seen=NOW() RETURNING id",
+          [telegramId],
+        )
+      ).rows[0].id,
+    );
   const { default: login } = await import("../api/_routes/admin-auth");
   const { default: admins } = await import("../api/_routes/admins/index");
   const { default: seed } = await import("../api/_routes/seed");
@@ -179,7 +188,7 @@ test("administrative sessions enforce owner permissions, CSRF, expiry, revocatio
         await call(
           admins,
           "POST",
-          { telegramId: 101, role: "super_admin" },
+          { userId: await accountId(101), role: "super_admin" },
           ownerHeaders,
         )
       ).status,
@@ -190,7 +199,7 @@ test("administrative sessions enforce owner permissions, CSRF, expiry, revocatio
         await call(
           admins,
           "POST",
-          { telegramId: 102, role: "admin" },
+          { userId: await accountId(102), role: "admin" },
           ownerHeaders,
         )
       ).status,
@@ -201,7 +210,7 @@ test("administrative sessions enforce owner permissions, CSRF, expiry, revocatio
         await call(
           admins,
           "POST",
-          { telegramId: 103, role: "unexpected" },
+          { userId: await accountId(103), role: "unexpected" },
           ownerHeaders,
         )
       ).status,
@@ -236,7 +245,7 @@ test("administrative sessions enforce owner permissions, CSRF, expiry, revocatio
       "raw key no longer authorizes API calls",
     );
     assert.equal(
-      (await call(login, "POST", { initData: signed(102, 600) }, origin))
+      (await call(login, "POST", { initData: signed(102, 90000) }, origin))
         .status,
       401,
       "old Telegram data cannot mint an admin session",
@@ -253,7 +262,7 @@ test("administrative sessions enforce owner permissions, CSRF, expiry, revocatio
         await call(
           admins,
           "POST",
-          { telegramId: 104, role: "super_admin" },
+          { userId: await accountId(104), role: "super_admin" },
           staffHeaders,
         )
       ).status,
@@ -327,7 +336,11 @@ test("administrative sessions enforce owner permissions, CSRF, expiry, revocatio
       const added = await call(
         admins,
         "POST",
-        { telegramId: tid, role: item.role, name: "Local employee" },
+        {
+          userId: await accountId(tid),
+          role: item.role,
+          name: "Local employee",
+        },
         ownerHeaders,
       );
       assert.equal(added.status, 201);
@@ -336,7 +349,7 @@ test("administrative sessions enforce owner permissions, CSRF, expiry, revocatio
           await call(
             admins,
             "POST",
-            { telegramId: tid, role: "admin", name: "Duplicate" },
+            { userId: await accountId(tid), role: "admin", name: "Duplicate" },
             ownerHeaders,
           )
         ).status,
@@ -400,7 +413,12 @@ test("administrative sessions enforce owner permissions, CSRF, expiry, revocatio
       const record = (
         await query("SELECT id,name FROM admins WHERE telegram_id=$1", [tid])
       ).rows[0];
-      assert.equal(record.name, "Local employee");
+      assert.equal(
+        (await call(admins, "GET", {}, ownerHeaders)).body.admins.find(
+          (r: any) => Number(r.id) === Number(record.id),
+        ).name,
+        "Local employee",
+      );
       assert.equal(
         (
           await call(
@@ -432,6 +450,248 @@ test("administrative sessions enforce owner permissions, CSRF, expiry, revocatio
       409,
       "last owner cannot be demoted",
     );
+    // Staff assignment works for real registered email accounts without Telegram IDs.
+    const { default: customerAuth } =
+      await import("../api/_routes/customer-auth");
+    const registered = await call(
+      customerAuth,
+      "POST",
+      {
+        action: "register",
+        email: "staff@example.com",
+        password: "local-password-2026",
+        name: "Email employee",
+      },
+      origin,
+    );
+    const ordinary = await call(
+      customerAuth,
+      "POST",
+      {
+        action: "register",
+        email: "customer@example.com",
+        password: "local-password-2026",
+        name: "Regular buyer",
+      },
+      origin,
+    );
+    assert.equal(registered.status, 201);
+    assert.equal(registered.body.user.staffRole, null);
+    assert.equal(registered.body.user.telegramId, null);
+    const customerCookie = registered.headers["set-cookie"].split(";")[0];
+    const ordinaryCookie = ordinary.headers["set-cookie"].split(";")[0];
+    const userHeaders = { ...origin, cookie: customerCookie };
+    const candidates = await call(admins, "GET", {}, ownerHeaders, {
+      candidates: "1",
+      q: "staff@example.com",
+    });
+    assert.deepEqual(
+      candidates.body.users.map((u: any) => u.id),
+      [registered.body.user.id],
+    );
+    assert.equal(candidates.body.users[0].password_hash, undefined);
+    assert.equal(
+      (await call(admins, "GET", {}, userHeaders, { candidates: "1" })).status,
+      403,
+    );
+    assert.equal(
+      (
+        await call(
+          admins,
+          "POST",
+          { telegramId: 123456, role: "admin" },
+          ownerHeaders,
+        )
+      ).status,
+      400,
+      "manual Telegram assignment is no longer accepted",
+    );
+    assert.equal(
+      (
+        await call(
+          admins,
+          "POST",
+          { userId: 9999999, role: "support" },
+          ownerHeaders,
+        )
+      ).status,
+      404,
+    );
+    assert.equal(
+      (
+        await call(
+          admins,
+          "POST",
+          { userId: registered.body.user.id, role: "order_manager" },
+          ownerHeaders,
+        )
+      ).status,
+      201,
+    );
+    assert.equal(
+      (await call(customerAuth, "GET", {}, userHeaders)).body.user.staffRole,
+      "order_manager",
+    );
+    assert.equal(
+      (
+        await call(
+          customerAuth,
+          "GET",
+          {},
+          { ...origin, cookie: ordinaryCookie },
+        )
+      ).body.user.staffRole,
+      null,
+    );
+    assert.equal(
+      (
+        await call(admins, "GET", {}, ownerHeaders, {
+          candidates: "1",
+          q: "staff@example.com",
+        })
+      ).body.users.length,
+      0,
+    );
+    const rejectedBridge = await call(
+      login,
+      "POST",
+      {
+        action: "account",
+        userId: registered.body.user.id,
+        role: "super_admin",
+      },
+      { ...origin, cookie: ordinaryCookie },
+    );
+    assert.equal(
+      rejectedBridge.status,
+      401,
+      "request IDs cannot impersonate a staff account",
+    );
+    const bridge = await call(
+      login,
+      "POST",
+      { action: "account", role: "super_admin" },
+      userHeaders,
+    );
+    assert.equal(bridge.status, 200);
+    assert.equal(bridge.body.user.role, "order_manager");
+    const staffCookie = bridge.headers["set-cookie"].split(";")[0];
+    const accountStaffHeaders = {
+      ...origin,
+      cookie: customerCookie + "; " + staffCookie,
+    };
+    assert.equal(
+      (await call(router, "GET", {}, accountStaffHeaders, { route: "orders" }))
+        .status,
+      200,
+    );
+    assert.equal(
+      (await call(router, "GET", {}, accountStaffHeaders, { route: "users" }))
+        .status,
+      403,
+    );
+    assert.equal(
+      (
+        await call(
+          login,
+          "GET",
+          {},
+          { ...origin, cookie: ordinaryCookie + "; " + staffCookie },
+        )
+      ).body.user,
+      null,
+      "switching shopper accounts invalidates the previous staff context",
+    );
+    assert.equal(
+      (await call(login, "GET", {}, { ...origin, cookie: staffCookie })).body
+        .user,
+      null,
+      "email staff session requires its parent shopper session",
+    );
+    const membership = (
+      await call(admins, "GET", {}, ownerHeaders)
+    ).body.admins.find((r: any) => r.user_id === registered.body.user.id);
+    assert.equal(membership.name, "Email employee");
+    assert.equal(
+      (
+        await call(admins, "PUT", { role: "support" }, ownerHeaders, {
+          id: String(membership.id),
+        })
+      ).status,
+      200,
+    );
+    assert.equal(
+      (await call(login, "GET", {}, accountStaffHeaders)).body.user,
+      null,
+    );
+    assert.equal(
+      (await call(customerAuth, "GET", {}, userHeaders)).body.user.staffRole,
+      "support",
+    );
+    const reentered = await call(
+      login,
+      "POST",
+      { action: "account" },
+      userHeaders,
+    );
+    const reenteredHeaders = {
+      ...origin,
+      cookie:
+        customerCookie + "; " + reentered.headers["set-cookie"].split(";")[0],
+    };
+    // Account password/session revocation cascades to the derived staff session.
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(customerCookie.split("=")[1])
+      .digest("hex");
+    await query("DELETE FROM customer_sessions WHERE token_hash=$1", [
+      tokenHash,
+    ]);
+    assert.equal(
+      (await call(login, "GET", {}, reenteredHeaders)).body.user,
+      null,
+    );
+    assert.equal(
+      (
+        await query(
+          "SELECT 1 FROM admin_sessions WHERE customer_token_hash=$1",
+          [tokenHash],
+        )
+      ).rows.length,
+      0,
+    );
+    assert.equal(
+      (
+        await call(admins, "DELETE", {}, ownerHeaders, {
+          id: String(membership.id),
+        })
+      ).status,
+      200,
+    );
+    const signedInAgain = await call(
+      customerAuth,
+      "POST",
+      {
+        action: "login",
+        email: "staff@example.com",
+        password: "local-password-2026",
+      },
+      origin,
+    );
+    assert.equal(signedInAgain.status, 200);
+    assert.equal(
+      signedInAgain.body.user.staffRole,
+      null,
+      "revoking staff permissions preserves the shopper account",
+    );
+    const { staffPanelLabel } = await import("../src/shared/staff");
+    assert.equal(staffPanelLabel(null), "");
+    assert.ok(staffPanelLabel("order_manager").length > 0);
+    assert.notEqual(
+      staffPanelLabel("order_manager"),
+      staffPanelLabel("support"),
+    );
+
     // Central audit never saves request bodies, passwords or payment credentials.
     assert.equal(
       (

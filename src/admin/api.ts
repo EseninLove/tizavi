@@ -57,6 +57,17 @@ export const authApi = {
     if (data.ok) adminUser = data.user;
     return data;
   },
+  loginWithAccount: async (initData = "") => {
+    const data = await apiFetch<any>("/api/admin-auth", {
+      method: "POST",
+      body: JSON.stringify({
+        action: "account",
+        ...(initData ? { initData } : {}),
+      }),
+    });
+    if (data.ok) adminUser = data.user;
+    return data;
+  },
   logout: async () => {
     const data = await apiFetch<any>("/api/admin-auth", {
       method: "POST",
@@ -127,15 +138,19 @@ export const usersApi = {
 // Администраторы
 export const adminsApi = {
   list: () => apiFetch<any>("/api/admins"),
-  add: (telegramId: number, role?: string, name = "") =>
+  candidates: (q = "", page = 0) =>
+    apiFetch<any>(
+      `/api/admins?candidates=1&q=${encodeURIComponent(q)}&page=${page}`,
+    ),
+  add: (userId: number, role: string) =>
     apiFetch<any>("/api/admins", {
       method: "POST",
-      body: JSON.stringify({ telegramId, role, name }),
+      body: JSON.stringify({ userId, role }),
     }),
-  update: (id: number, name: string, role: string) =>
+  update: (id: number, role: string) =>
     apiFetch<any>(`/api/admins?id=${id}`, {
       method: "PUT",
-      body: JSON.stringify({ name, role }),
+      body: JSON.stringify({ role }),
     }),
   remove: (id: number) =>
     apiFetch<any>(`/api/admins?id=${id}`, { method: "DELETE" }),

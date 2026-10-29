@@ -107,3 +107,15 @@ export function staffHome(role: unknown) {
     ].find((path) => staffPageAllowed(role, path)) || "/admin"
   );
 }
+
+export function staffPanelLabel(role: unknown) {
+  const labels: Record<StaffRole, string> = {
+    super_admin: "Админ-панель",
+    admin: "Админ-панель",
+    order_manager: "Панель менеджера заказов",
+    catalog_manager: "Панель менеджера каталога",
+    support: "Панель специалиста поддержки",
+    logistics: "Панель логиста",
+  };
+  return isStaffRole(role) ? labels[role] : "";
+}

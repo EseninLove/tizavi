@@ -20,7 +20,8 @@ function flags(req: VercelRequest) {
 export async function createAdminSession(
   req: VercelRequest,
   res: VercelResponse,
-  telegramId: number | null,
+  userId: number | null,
+  customerTokenHash: string | null = null,
 ) {
   await ensureCommerceSchema();
   const value = crypto.randomBytes(32).toString("hex");
@@ -28,7 +29,7 @@ export async function createAdminSession(
   const previous = token(req);
   if (previous)
     await sql`DELETE FROM admin_sessions WHERE token_hash=${fingerprint(previous)}`;
-  await sql`INSERT INTO admin_sessions(token_hash,telegram_id,key_version,expires_at) VALUES(${fingerprint(value)},${telegramId},${telegramId === null ? adminKeyVersion() : null},NOW()+${HOURS}*INTERVAL '1 hour')`;
+  await sql`INSERT INTO admin_sessions(token_hash,user_id,customer_token_hash,key_version,expires_at) VALUES(${fingerprint(value)},${userId},${customerTokenHash},${userId === null ? adminKeyVersion() : null},NOW()+${HOURS}*INTERVAL '1 hour')`;
   res.setHeader(
     "Set-Cookie",
     `${COOKIE}=${value}; ${flags(req)}; Max-Age=${HOURS * 3600}`,
@@ -50,12 +51,34 @@ export async function readAdminSession(req: VercelRequest) {
   if (req.method !== "GET" && req.method !== "HEAD") sameOrigin(req);
   await ensureCommerceSchema();
   const row = (
-    await sql`SELECT s.telegram_id,s.key_version,a.role FROM admin_sessions s LEFT JOIN admins a ON a.telegram_id=s.telegram_id WHERE s.token_hash=${fingerprint(value)} AND s.expires_at>NOW()`
+    await sql`SELECT s.user_id,s.key_version,s.customer_token_hash,a.telegram_id,a.role FROM admin_sessions s LEFT JOIN admins a ON a.user_id=s.user_id WHERE s.token_hash=${fingerprint(value)} AND s.expires_at>NOW()`
   ).rows[0];
   if (!row) return null;
-  if (row.telegram_id !== null) {
+  if (row.customer_token_hash) {
+    const customerCookie = String(req.headers.cookie || "")
+      .split(";")
+      .map((x) => x.trim())
+      .find((x) => x.startsWith("tizavi_customer="))
+      ?.slice("tizavi_customer=".length);
+    if (
+      !customerCookie ||
+      fingerprint(customerCookie) !== row.customer_token_hash
+    )
+      return null;
+    if (
+      !(
+        await sql`SELECT 1 FROM customer_sessions WHERE token_hash=${row.customer_token_hash} AND expires_at>NOW()`
+      ).rows.length
+    )
+      return null;
+  }
+  if (row.user_id !== null) {
     if (!isStaffRole(row.role)) return null;
-    return { telegramId: Number(row.telegram_id), role: String(row.role) };
+    return {
+      telegramId: Number(row.telegram_id || 0),
+      userId: Number(row.user_id),
+      role: String(row.role),
+    };
   }
   const version = adminKeyVersion();
   return version && row.key_version === version

@@ -1,3 +1,4 @@
+import { StaffPanelButton } from "../components/StaffPanelButton";
 import { useAuth } from "../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
@@ -5,7 +6,7 @@ import { useSubscription } from "../context/SubscriptionContext";
 import { formatPrice, formatDate, pluralize } from "../utils/format";
 import { orderStatusLabel, paymentStatusLabels } from "../utils/orders";
 import { useProducts } from "../context/ProductsContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CartIcon, HeartIcon, UserIcon, CheckIcon } from "../components/Icons";
 
 function PackageIcon({ className }: { className?: string }) {
@@ -44,7 +45,10 @@ function SettingsIcon() {
 
 export function Profile() {
   const navigate = useNavigate();
-  const { user: account, loading: authLoading } = useAuth();
+  const { user: account, loading: authLoading, refresh } = useAuth();
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
   const {
     orders,
     wishlist,
@@ -155,6 +159,7 @@ export function Profile() {
                 <span aria-hidden="true">↗</span>
               </Link>
             )}
+            <StaffPanelButton />
           </div>
           <div className="profile-avatar-scene" aria-hidden="true">
             <div className="profile-avatar-orbit" />
@@ -367,11 +372,6 @@ export function Profile() {
             <p>Вопросы о заказах, доставке или подписке.</p>
           </Link>
           <div className="profile-documents">
-            {account?.telegramId && (
-              <Link to="/admin">
-                Панель сотрудников <span aria-hidden="true">↗</span>
-              </Link>
-            )}
             <Link to="/profile/privacy">
               Мои персональные данные <span aria-hidden="true">↗</span>
             </Link>

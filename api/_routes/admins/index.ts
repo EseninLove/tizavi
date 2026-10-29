@@ -11,13 +11,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ok: false,
         error: "Управление сотрудниками доступно владельцу",
       });
-    if (req.method === "GET")
+    if (req.method === "GET") {
+      if (req.query.candidates === "1") {
+        const q =
+          typeof req.query.q === "string"
+            ? req.query.q.trim().slice(0, 100)
+            : "";
+        const page = Math.max(
+          0,
+          Math.min(100000, Math.floor(Number(req.query.page) || 0)),
+        );
+        const pattern = "%" + q + "%";
+        const rows = (
+          await sql`SELECT u.id,u.display_name,u.first_name,u.last_name,u.email,u.username,u.photo_url,u.last_seen FROM users u WHERE NOT EXISTS(SELECT 1 FROM admins a WHERE a.user_id=u.id OR a.telegram_id=u.telegram_id) AND (COALESCE(u.email,'') ILIKE ${pattern} OR CONCAT_WS(' ',u.display_name,u.first_name,u.last_name,u.username) ILIKE ${pattern}) ORDER BY u.last_seen DESC,u.id DESC LIMIT 51 OFFSET ${page * 50}`
+        ).rows;
+        return res.json({
+          ok: true,
+          users: rows.slice(0, 50),
+          hasMore: rows.length > 50,
+        });
+      }
       return res.json({
         ok: true,
         admins: (
-          await sql`SELECT id,telegram_id,name,role,created_at FROM admins ORDER BY created_at LIMIT 500`
+          await sql`SELECT a.id,a.user_id,a.telegram_id,a.role,a.created_at,COALESCE(NULLIF(u.display_name,''),NULLIF(CONCAT_WS(' ',u.first_name,u.last_name),''),u.email,NULLIF(a.name,''),'Сотрудник') AS name,u.email,u.username FROM admins a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.created_at LIMIT 500`
         ).rows,
       });
+    }
     if (!["POST", "PUT", "DELETE"].includes(req.method || ""))
       return res.status(405).json({ ok: false });
     const client = await pool.connect();
@@ -25,35 +45,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await client.query("BEGIN");
       await client.query("SELECT pg_advisory_xact_lock(78264322)");
       let target: number;
-      const name = req.body?.name ?? "";
       const role = req.body?.role ?? "admin";
-      if (
-        req.method !== "DELETE" &&
-        (!isStaffRole(role) ||
-          typeof name !== "string" ||
-          name.trim().length > 100)
-      )
-        throw new ShopError("Проверьте имя и роль сотрудника");
+      if (req.method !== "DELETE" && !isStaffRole(role))
+        throw new ShopError("Выберите допустимую роль сотрудника");
       if (req.method === "POST") {
-        target = positiveInteger(req.body?.telegramId, Number.MAX_SAFE_INTEGER);
+        target = positiveInteger(req.body?.userId);
+        const selected = (
+          await client.query(
+            "SELECT id,telegram_id FROM users WHERE id=$1 FOR KEY SHARE",
+            [target],
+          )
+        ).rows[0];
+        if (!selected)
+          throw new ShopError("Выберите зарегистрированного пользователя", 404);
         const duplicate = await client.query(
-          "SELECT id FROM admins WHERE telegram_id=$1",
-          [target],
+          "SELECT id FROM admins WHERE user_id=$1 OR (telegram_id=$2 AND $2 IS NOT NULL)",
+          [target, selected.telegram_id],
         );
         if (duplicate.rows.length)
           throw new ShopError(
-            "Сотрудник с таким Telegram ID уже добавлен. Измените его роль в списке.",
+            "Права этому пользователю уже выданы. Измените роль в списке сотрудников.",
             409,
           );
         await client.query(
-          "INSERT INTO admins(telegram_id,name,role) VALUES($1,$2,$3)",
-          [target, name.trim(), role],
+          "INSERT INTO admins(user_id,telegram_id,role) VALUES($1,$2,$3)",
+          [target, selected.telegram_id, role],
         );
       } else {
         const id = positiveInteger(req.query.id);
         const row = (
           await client.query(
-            "SELECT telegram_id,role FROM admins WHERE id=$1 FOR UPDATE",
+            "SELECT user_id,telegram_id,role FROM admins WHERE id=$1 FOR UPDATE",
             [id],
           )
         ).rows[0];
@@ -73,16 +95,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             "Нельзя удалить или понизить последнего владельца",
             409,
           );
-        target = Number(row.telegram_id);
+        target = Number(row.user_id || row.telegram_id);
         if (req.method === "DELETE" || role !== row.role)
           await client.query(
-            "DELETE FROM admin_sessions WHERE telegram_id=$1",
-            [target],
+            "DELETE FROM admin_sessions WHERE user_id=$1 OR (telegram_id=$2 AND $2 IS NOT NULL)",
+            [row.user_id, row.telegram_id],
           );
         if (req.method === "PUT")
-          await client.query("UPDATE admins SET name=$2,role=$3 WHERE id=$1", [
+          await client.query("UPDATE admins SET role=$2 WHERE id=$1", [
             id,
-            name.trim(),
             role,
           ]);
         else await client.query("DELETE FROM admins WHERE id=$1", [id]);
@@ -90,9 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await client.query(
         "INSERT INTO admin_audit(actor,action,target,result) VALUES($1,$2,$3,$4)",
         [
-          auth.user.telegramId
-            ? `telegram:${auth.user.telegramId}`
-            : "owner-key",
+          auth.user.userId ? `account:${auth.user.userId}` : "owner-key",
           req.method === "POST"
             ? "admin_added"
             : req.method === "PUT"

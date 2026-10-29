@@ -62,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       checkOrigin(req);
       const body = req.body || {},
-        actor = `admin:${auth.user.telegramId || "owner-key"}`;
+        actor = auth.user.userId ? `account:${auth.user.userId}` : "owner-key";
       if (body.action === "settings") {
         const value = (key: string, max: number) => {
           const v = body[key];

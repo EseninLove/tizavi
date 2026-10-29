@@ -94,8 +94,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (administrativeMutation) {
       const auth = await authenticateAdmin(req);
       if (auth.authorized && auth.user) {
-        const actor = auth.user.telegramId
-          ? `telegram:${auth.user.telegramId}`
+        const actor = auth.user.userId
+          ? `account:${auth.user.userId}`
           : "owner-key";
         const json = res.json.bind(res);
         res.json = ((data: unknown) => {

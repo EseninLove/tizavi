@@ -1,3 +1,4 @@
+import { staffForAccount } from "./_staff-account.js";
 import { clientAddress } from "./_security.js";
 import crypto from "node:crypto";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
@@ -67,9 +68,10 @@ export async function verifyPassword(password: string, stored: string | null) {
     valid && crypto.timingSafeEqual(computed, Buffer.from(parts[2], "hex"))
   );
 }
-export function publicCustomer(row: Customer) {
+export async function publicCustomer(row: Customer) {
   return {
     id: Number(row.id),
+    staffRole: await staffForAccount(row),
     telegramId: row.telegram_id ? Number(row.telegram_id) : null,
     email: row.email,
     emailVerified: row.email_verified,
@@ -163,6 +165,13 @@ export async function createSession(
 }
 export async function removeSession(req: VercelRequest, res: VercelResponse) {
   const token = sessionToken(req);
+  const adminToken = String(req.headers.cookie || "")
+    .split(";")
+    .map((x) => x.trim())
+    .find((x) => x.startsWith("tizavi_admin="))
+    ?.slice("tizavi_admin=".length);
+  if (adminToken && /^[a-f0-9]{64}$/.test(adminToken))
+    await sql`DELETE FROM admin_sessions WHERE token_hash=${digest(adminToken)}`;
   if (token)
     await sql`DELETE FROM customer_sessions WHERE token_hash=${digest(token)}`;
   res.setHeader(

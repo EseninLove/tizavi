@@ -1,7 +1,12 @@
-import { isStaffRole } from "../../src/shared/staff.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { authenticateAdmin, validateInitData, sql } from "../_helpers.js";
+import { authenticateAdmin } from "../_helpers.js";
 import { createAdminSession, removeAdminSession } from "../_admin-session.js";
+import {
+  authenticateCustomer,
+  sessionToken,
+  digest,
+} from "../_customer-auth.js";
+import { staffForAccount } from "../_staff-account.js";
 import {
   clientAddress,
   limitRequest,
@@ -19,15 +24,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (req.method !== "POST") return res.status(405).json({ ok: false });
     sameOrigin(req);
-    const { action, adminKey, initData } = req.body || {};
+    const { action, adminKey } = req.body || {};
     if (action === "logout") {
       const auth = await authenticateAdmin(req);
       await removeAdminSession(req, res);
       if (auth.user)
         await writeAdminAudit(
-          auth.user.telegramId
-            ? `telegram:${auth.user.telegramId}`
-            : "owner-key",
+          auth.user.userId ? `account:${auth.user.userId}` : "owner-key",
           "admin_logout",
           null,
           200,
@@ -36,44 +39,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     await limitRequest("admin-login", clientAddress(req), 20, 900);
     let user:
-      { telegramId: number; role: string; firstName?: string } | undefined;
+      | {
+          telegramId: number;
+          role: string;
+          userId?: number;
+          firstName?: string;
+        }
+      | undefined;
+    let parent: string | null = null;
     if (validAdminKey(adminKey))
       user = { telegramId: 0, role: "super_admin", firstName: "Admin" };
-    else if (typeof initData === "string" && initData.length <= 16000) {
-      const auth = validateInitData(initData);
-      const age =
-        Math.floor(Date.now() / 1000) -
-        Number(new URLSearchParams(initData).get("auth_date"));
-      if (auth.valid && auth.userId && age <= 300) {
-        const row = (
-          await sql`SELECT role FROM admins WHERE telegram_id=${auth.userId}`
-        ).rows[0];
-        if (row && isStaffRole(row.role))
-          user = { telegramId: auth.userId, role: String(row.role) };
+    else if (action === "account" || req.body?.initData) {
+      const customer = await authenticateCustomer(req);
+      if (customer) {
+        const role = await staffForAccount(customer);
+        if (role) {
+          user = {
+            userId: Number(customer.id),
+            telegramId: Number(customer.telegram_id || 0),
+            role,
+          };
+          if (!req.body?.initData) {
+            const token = sessionToken(req);
+            if (token) parent = digest(token);
+          }
+        }
       }
     }
     if (!user) {
       await writeAdminAudit("anonymous", "admin_login_failed", null, 401);
-      return res.status(401).json({
-        ok: false,
-        error: "Неверный ключ или нет прав администратора",
-      });
+      return res
+        .status(401)
+        .json({
+          ok: false,
+          error:
+            "Нет доступа к панели сотрудников. Войдите в свой профиль или обратитесь к владельцу.",
+        });
     }
-    await createAdminSession(req, res, user.telegramId || null);
+    await createAdminSession(req, res, user.userId || null, parent);
     await writeAdminAudit(
-      user.telegramId ? `telegram:${user.telegramId}` : "owner-key",
+      user.userId ? `account:${user.userId}` : "owner-key",
       "admin_login",
       null,
       200,
     );
     return res.json({ ok: true, user });
   } catch (e) {
-    return res.status(e instanceof ShopError ? e.status : 503).json({
-      ok: false,
-      error:
-        e instanceof ShopError
-          ? e.message
-          : "Не удалось войти. Повторите попытку.",
-    });
+    return res
+      .status(e instanceof ShopError ? e.status : 503)
+      .json({
+        ok: false,
+        error:
+          e instanceof ShopError
+            ? e.message
+            : "Не удалось войти. Повторите попытку.",
+      });
   }
 }

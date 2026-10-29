@@ -1,15 +1,18 @@
+import { useAuth } from "../context/AuthContext";
+import { staffPanelLabel } from "../shared/staff";
 import { useTelegram } from "../lib/telegram";
 import { useState } from "react";
 import { authApi } from "./api";
 import { AdminIcon, AdminNotice } from "./AdminUI";
 export function AdminLogin({ onLogin }: { onLogin: () => void }) {
   const { webApp } = useTelegram();
+  const { user: account } = useAuth();
   const telegramLogin = async () => {
-    if (busy || !webApp?.initData) return;
+    if (busy || !account?.staffRole) return;
     setBusy(true);
     setError("");
     try {
-      const d = await authApi.loginWithTelegram(webApp.initData);
+      const d = await authApi.loginWithAccount(webApp?.initData || "");
       if (d.ok) onLogin();
       else setError(d.error || "Нет доступа к панели сотрудников");
     } catch {
@@ -69,18 +72,17 @@ export function AdminLogin({ onLogin }: { onLogin: () => void }) {
         </div>
         <h1>Tizavi</h1>
         <p className="mb-7 mt-1">Вход в управление магазином</p>
-        {webApp?.initData && (
+        {account?.staffRole && (
           <div className="mb-6">
             <button
               className="admin-primary w-full"
               disabled={busy}
               onClick={() => void telegramLogin()}
             >
-              {busy ? "Проверяем…" : "Войти через Telegram"}
+              {busy ? "Открываем…" : staffPanelLabel(account.staffRole)}
             </button>
             <p className="admin-hint mt-2">
-              Для сотрудников, которых добавил владелец. Если магазин открыт
-              давно, закройте и откройте его заново перед входом.
+              Войти с правами вашего аккаунта магазина.
             </p>
           </div>
         )}

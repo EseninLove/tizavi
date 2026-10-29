@@ -13,7 +13,7 @@ async function notifyAdmins(): Promise<void> {
 
   try {
     const admins =
-      await sql`SELECT telegram_id FROM admins WHERE role IN ('super_admin','admin','support')`;
+      await sql`SELECT COALESCE(u.telegram_id,a.telegram_id) AS telegram_id FROM admins a LEFT JOIN users u ON u.id=a.user_id WHERE a.role IN ('super_admin','admin','support')`;
     const text =
       "В магазине новое обращение в поддержку. Подробности доступны в защищённой админке.";
 

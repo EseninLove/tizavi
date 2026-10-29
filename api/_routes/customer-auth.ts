@@ -21,7 +21,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === "GET") {
       const user = await sessionCustomer(req);
-      return res.json({ ok: true, user: user ? publicCustomer(user) : null });
+      return res.json({
+        ok: true,
+        user: user ? await publicCustomer(user) : null,
+      });
     }
     if (req.method !== "POST") return res.status(405).json({ ok: false });
     checkOrigin(req);
@@ -31,7 +34,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new ShopError("В Telegram добавьте email к текущему профилю");
     if (action === "me") {
       const user = await authenticateCustomer(req);
-      return res.json({ ok: true, user: user ? publicCustomer(user) : null });
+      return res.json({
+        ok: true,
+        user: user ? await publicCustomer(user) : null,
+      });
     }
     if (action === "logout") {
       checkOrigin(req, true);
@@ -47,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const updated = (
         await sql<Customer>`UPDATE users SET display_name=${name.trim()} WHERE id=${user.id} RETURNING *`
       ).rows[0];
-      return res.json({ ok: true, user: publicCustomer(updated) });
+      return res.json({ ok: true, user: await publicCustomer(updated) });
     }
     if (
       !["register", "login", "attach-email", "change-password"].includes(action)
@@ -75,7 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sql`UPDATE users SET password_hash=${hash} WHERE id=${user.id}`;
       await sql`DELETE FROM customer_sessions WHERE user_id=${user.id}`;
       await createSession(req, res, user.id);
-      return res.json({ ok: true, user: publicCustomer(user) });
+      return res.json({ ok: true, user: await publicCustomer(user) });
     }
     if (action === "login") {
       if (
@@ -98,7 +104,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         throw new ShopError("Email или пароль неверны", 401);
       await sql`UPDATE users SET last_seen=NOW() WHERE id=${row.id}`;
       await createSession(req, res, Number(row.id));
-      return res.json({ ok: true, user: publicCustomer(row) });
+      return res.json({ ok: true, user: await publicCustomer(row) });
     }
     validatePassword(req.body?.password);
     const name = String(req.body?.name || "").trim();
@@ -123,7 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await createSession(req, res, Number(user.id));
     return res
       .status(action === "register" ? 201 : 200)
-      .json({ ok: true, user: publicCustomer(user) });
+      .json({ ok: true, user: await publicCustomer(user) });
   } catch (e) {
     const duplicate = (e as { code?: string })?.code === "23505";
     return res

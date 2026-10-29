@@ -1,3 +1,4 @@
+import type { StaffRole } from "../shared/staff";
 import { clearPrivate } from "../lib/private-storage";
 import {
   createContext,
@@ -11,6 +12,7 @@ import {
 import { useTelegram } from "../lib/telegram";
 export interface Customer {
   id: number;
+  staffRole: StaffRole | null;
   telegramId: number | null;
   email: string | null;
   emailVerified: boolean;
