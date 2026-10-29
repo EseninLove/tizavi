@@ -14,32 +14,6 @@ const categoryIcons: Record<string, string> = {
   frozen: "❄️",
   sweets: "🍪",
 };
-const collections = [
-  {
-    id: "sale",
-    number: "01",
-    title: "Приятные цены",
-    text: "Товары со скидкой",
-    label: "Смотреть акции",
-    className: "sale",
-  },
-  {
-    id: "popular",
-    number: "02",
-    title: "Любимые продукты",
-    text: "Популярное в магазине",
-    label: "Выбрать продукты",
-    className: "popular",
-  },
-  {
-    id: "seasonal",
-    number: "03",
-    title: "Вкус этого сезона",
-    text: "Сезонная подборка",
-    label: "За покупками",
-    className: "seasonal",
-  },
-];
 
 export function StorefrontHome({
   categories,
@@ -93,25 +67,6 @@ export function StorefrontHome({
             </strong>
           </span>
         </div>
-      </section>
-      <section className="market-collections" aria-label="Подборки продуктов">
-        {collections.map((c) => (
-          <button
-            key={c.id}
-            className={`market-collection market-collection-${c.className}`}
-            onClick={() => onBrowse("all", c.id)}
-          >
-            <span className="market-collection-top">
-              {c.text}
-              <span>{c.number}</span>
-            </span>
-            <strong>{c.title}</strong>
-            <span className="market-collection-link">
-              {c.label}
-              <span aria-hidden="true">↗</span>
-            </span>
-          </button>
-        ))}
       </section>
       {categories.some((c) => c.id !== "all") && (
         <section

@@ -156,65 +156,6 @@
   font-size: 12px;
   font-weight: 600;
 }
-.market-collections {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-  margin: 14px 0 32px;
-}
-.market-collection {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  text-align: left;
-  padding: 18px 20px;
-  border-radius: 16px;
-  position: relative;
-  transition: transform 0.2s;
-}
-.market-collection:hover {
-  transform: translateY(-3px);
-}
-.market-collection-sale {
-  background: #dce8c8;
-  color: #234128;
-}
-.market-collection-popular {
-  background: #e7d6b3;
-  color: #51402b;
-}
-.market-collection-seasonal {
-  background: #cadbce;
-  color: #244b37;
-}
-.market-collection-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 10px;
-  opacity: 0.8;
-}
-.market-collection-top > span {
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-.market-collection > strong {
-  flex: 1;
-  display: block;
-  font-size: 21px;
-  letter-spacing: -0.6px;
-  margin: 10px 0 15px;
-  font-weight: 600;
-}
-.market-collection-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11px;
-}
-.market-collection-link > span {
-  font-size: 22px;
-}
 .market-section-title {
   display: flex;
   align-items: end;
@@ -454,15 +395,6 @@
   color: var(--tg-hint);
 }
 @media (min-width: 480px) {
-  .market-collections {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .market-collection {
-    padding: 18px 14px;
-  }
-  .market-collection > strong {
-    font-size: 18px;
-  }
   .market-category-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -514,23 +446,6 @@
     height: 92px;
     right: 15px;
     top: 36px;
-  }
-  .market-collections {
-    gap: 16px;
-    margin-top: 18px;
-    margin-bottom: 50px;
-  }
-  .market-collection {
-    padding: 23px 24px;
-    border-radius: 18px;
-  }
-  .market-collection > strong {
-    font-size: 25px;
-    margin: 20px 0 18px;
-  }
-  .market-collection-top,
-  .market-collection-link {
-    font-size: 12px;
   }
   .market-section-title {
     margin-bottom: 24px;
@@ -1985,5 +1900,14 @@
   }
   .shop-shell .settings-privacy {
     grid-column: 1;
+  }
+}
+
+.market-home > .market-categories {
+  margin-top: 32px;
+}
+@media (min-width: 768px) {
+  .market-home > .market-categories {
+    margin-top: 50px;
   }
 }
