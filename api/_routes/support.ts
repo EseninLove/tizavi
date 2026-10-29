@@ -1,3 +1,5 @@
+import { limitRequest } from "../_security.js";
+import { ShopError } from "../_commerce.js";
 import { requireCustomer } from "../_customer-auth.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { sql, authenticateAdmin, sendJSON, unauthorized } from "../_helpers.js";
@@ -75,6 +77,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    try {
+      await limitRequest("support-create", String(userId), 5, 600);
+    } catch (e) {
+      return sendJSON(res, e instanceof ShopError ? e.status : 503, {
+        ok: false,
+        error:
+          e instanceof ShopError ? e.message : "Сервис временно недоступен",
+      });
+    }
     const userName =
       [customer.first_name, customer.last_name].filter(Boolean).join(" ") ||
       customer.email ||

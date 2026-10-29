@@ -1,76 +1,78 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { validateInitData } from "../_helpers.js";
-
-const ADMIN_KEY = process.env.ADMIN_KEY || "";
-
+import { authenticateAdmin, validateInitData, sql } from "../_helpers.js";
+import { createAdminSession, removeAdminSession } from "../_admin-session.js";
+import {
+  clientAddress,
+  limitRequest,
+  sameOrigin,
+  validAdminKey,
+  writeAdminAudit,
+} from "../_security.js";
+import { ShopError } from "../_commerce.js";
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ ok: false, error: "Method not allowed" });
-  }
-
-  const { initData, adminKey } = (req.body || {}) as {
-    initData?: string;
-    adminKey?: string;
-  };
-
-  if (adminKey) {
-    if (ADMIN_KEY && adminKey.trim() === ADMIN_KEY.trim()) {
-      return res.status(200).json({
-        ok: true,
-        method: "key",
-        user: { role: "super_admin", firstName: "Admin" },
-      });
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    if (req.method === "GET") {
+      const auth = await authenticateAdmin(req);
+      return res.json({ ok: true, user: auth.user || null });
     }
-    return res
-      .status(401)
-      .json({ ok: false, error: "Неверный ключ администратора" });
-  }
-
-  if (initData) {
-    const { valid, userId } = validateInitData(initData);
-    if (!valid || !userId) {
-      return res
-        .status(401)
-        .json({ ok: false, error: "Невалидные данные Telegram" });
+    if (req.method !== "POST") return res.status(405).json({ ok: false });
+    sameOrigin(req);
+    const { action, adminKey, initData } = req.body || {};
+    if (action === "logout") {
+      const auth = await authenticateAdmin(req);
+      await removeAdminSession(req, res);
+      if (auth.user)
+        await writeAdminAudit(
+          auth.user.telegramId
+            ? `telegram:${auth.user.telegramId}`
+            : "owner-key",
+          "admin_logout",
+          null,
+          200,
+        );
+      return res.json({ ok: true });
     }
-
-    let isAdmin = false;
-    let role = "admin";
-    try {
-      const { sql } = await import("../_db.js");
-      const result =
-        await sql`SELECT role FROM admins WHERE telegram_id = ${userId}`;
-      isAdmin = (result.rowCount ?? 0) > 0;
-      role = String(result.rows[0]?.role || "admin");
-    } catch {
-      return res.status(500).json({
+    await limitRequest("admin-login", clientAddress(req), 20, 900);
+    let user:
+      { telegramId: number; role: string; firstName?: string } | undefined;
+    if (validAdminKey(adminKey))
+      user = { telegramId: 0, role: "super_admin", firstName: "Admin" };
+    else if (typeof initData === "string" && initData.length <= 16000) {
+      const auth = validateInitData(initData);
+      const age =
+        Math.floor(Date.now() / 1000) -
+        Number(new URLSearchParams(initData).get("auth_date"));
+      if (auth.valid && auth.userId && age <= 300) {
+        const row = (
+          await sql`SELECT role FROM admins WHERE telegram_id=${auth.userId}`
+        ).rows[0];
+        if (row && ["admin", "super_admin"].includes(String(row.role)))
+          user = { telegramId: auth.userId, role: String(row.role) };
+      }
+    }
+    if (!user) {
+      await writeAdminAudit("anonymous", "admin_login_failed", null, 401);
+      return res.status(401).json({
         ok: false,
-        error: "База данных недоступна. Проверьте переменную DB_URL.",
+        error: "Неверный ключ или нет прав администратора",
       });
     }
-
-    if (!isAdmin) {
-      return res
-        .status(403)
-        .json({ ok: false, error: "У вас нет прав администратора" });
-    }
-
-    const userParam = new URLSearchParams(initData).get("user");
-    const user = userParam ? JSON.parse(userParam) : {};
-
-    return res.status(200).json({
-      ok: true,
-      method: "telegram",
-      user: {
-        telegramId: userId,
-        username: user.username,
-        firstName: user.first_name,
-        role,
-      },
+    await createAdminSession(req, res, user.telegramId || null);
+    await writeAdminAudit(
+      user.telegramId ? `telegram:${user.telegramId}` : "owner-key",
+      "admin_login",
+      null,
+      200,
+    );
+    return res.json({ ok: true, user });
+  } catch (e) {
+    return res.status(e instanceof ShopError ? e.status : 503).json({
+      ok: false,
+      error:
+        e instanceof ShopError
+          ? e.message
+          : "Не удалось войти. Повторите попытку.",
     });
   }
-
-  return res
-    .status(400)
-    .json({ ok: false, error: "Не переданы данные для авторизации" });
 }

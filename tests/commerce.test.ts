@@ -170,6 +170,7 @@ test("search supports typos, aliases and brand metadata", () => {
 
 test("database and API payment lifecycle rejects forged activation and applies real confirmation once", async () => {
   process.env.ADMIN_KEY = "local-test-admin";
+  process.env.ENABLE_CATALOG_SEED = "true";
   process.env.BOT_TOKEN = "local-test-bot";
   process.env.DADATA_TOKEN = "local-test-address";
   process.env.YOOKASSA_SHOP_ID = "test-shop";
@@ -272,6 +273,7 @@ test("database and API payment lifecycle rejects forged activation and applies r
     }
     throw new Error("Unexpected external request: " + url);
   };
+  let adminCookie = "";
   const call = async (
     handler: any,
     method: string,
@@ -280,6 +282,18 @@ test("database and API payment lifecycle rejects forged activation and applies r
     admin = false,
     headers: Record<string, string> = {},
   ) => {
+    if (admin && !adminCookie) {
+      const login = await call(
+        (await import("../api/_routes/admin-auth")).default,
+        "POST",
+        { adminKey: "local-test-admin" },
+        {},
+        false,
+        { host: "shop.example", origin: "https://shop.example" },
+      );
+      assert.equal(login.status, 200, JSON.stringify(login.body));
+      adminCookie = login.headers["set-cookie"].split(";")[0];
+    }
     let status = 200,
       result: any;
     const responseHeaders: Record<string, string> = {};
@@ -310,7 +324,13 @@ test("database and API payment lifecycle rejects forged activation and applies r
         body,
         query: params,
         headers: {
-          ...(admin ? { "x-admin-auth": "Key local-test-admin" } : {}),
+          ...(admin
+            ? {
+                cookie: adminCookie,
+                host: "shop.example",
+                origin: "https://shop.example",
+              }
+            : {}),
           ...headers,
         },
       },
@@ -376,7 +396,7 @@ test("database and API payment lifecycle rejects forged activation and applies r
     );
     assert.equal(
       (await call(router, "GET", {}, { route: "payment-settings" })).status,
-      403,
+      401,
     );
     assert.equal(
       (

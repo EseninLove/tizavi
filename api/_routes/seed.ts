@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { authenticateAdmin, sendJSON, unauthorized } from "../_helpers.js";
+import { authenticateAdmin, sendJSON } from "../_helpers.js";
 import { sql } from "../_db.js";
 import { seedProducts } from "../_seed-data.js";
 import { ensureCommerceSchema } from "../_schema.js";
@@ -9,118 +9,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return sendJSON(res, 405, { ok: false, error: "Method not allowed" });
   }
 
-  const { authorized } = await authenticateAdmin(req);
-  if (!authorized) return unauthorized(res);
-
-  const { telegramId } = (req.body || {}) as { telegramId?: number };
+  const { authorized, user } = await authenticateAdmin(req);
+  if (!authorized || user?.role !== "super_admin")
+    return res
+      .status(403)
+      .json({ ok: false, error: "Операция доступна владельцу" });
+  if (process.env.ENABLE_CATALOG_SEED !== "true")
+    return res.status(403).json({
+      ok: false,
+      error: "Первоначальное заполнение отключено на сервере",
+    });
 
   try {
-    await sql`
-      CREATE TABLE IF NOT EXISTS admins (
-        id SERIAL PRIMARY KEY,
-        telegram_id BIGINT UNIQUE NOT NULL,
-        role TEXT DEFAULT 'admin',
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS products (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT DEFAULT '',
-        price INTEGER NOT NULL,
-        old_price INTEGER,
-        image TEXT DEFAULT '',
-        category TEXT NOT NULL,
-        rating REAL DEFAULT 5.0,
-        reviews_count INTEGER DEFAULT 0,
-        in_stock BOOLEAN DEFAULT TRUE,
-        badge TEXT,
-        unit TEXT DEFAULT 'шт',
-        weight REAL,
-        sort_order INTEGER DEFAULT 0,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS categories (
-        id SERIAL PRIMARY KEY,
-        slug TEXT UNIQUE NOT NULL,
-        name TEXT NOT NULL,
-        sort_order INTEGER DEFAULT 0,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS orders (
-        id SERIAL PRIMARY KEY,
-        order_number TEXT UNIQUE NOT NULL,
-        items JSONB NOT NULL DEFAULT '[]',
-        total INTEGER NOT NULL,
-        delivery JSONB NOT NULL DEFAULT '{}',
-        payment_method TEXT NOT NULL DEFAULT 'stars',
-        status TEXT NOT NULL DEFAULT 'pending',
-        telegram_user_id BIGINT,
-        telegram_username TEXT,
-        customer_name TEXT,
-        customer_phone TEXT,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        telegram_id BIGINT UNIQUE NOT NULL,
-        username TEXT,
-        first_name TEXT,
-        last_name TEXT,
-        photo_url TEXT,
-        orders_count INTEGER DEFAULT 0,
-        total_spent INTEGER DEFAULT 0,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        last_seen TIMESTAMPTZ DEFAULT NOW()
-      )
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS subscriptions (
-        id SERIAL PRIMARY KEY,
-        telegram_id BIGINT UNIQUE NOT NULL,
-        expires_at TIMESTAMPTZ NOT NULL,
-        payment_method TEXT DEFAULT 'stars',
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS support_tickets (
-        id SERIAL PRIMARY KEY,
-        telegram_id BIGINT NOT NULL,
-        username TEXT,
-        user_name TEXT,
-        subject TEXT NOT NULL,
-        message TEXT NOT NULL,
-        reply TEXT,
-        status TEXT NOT NULL DEFAULT 'open',
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        replied_at TIMESTAMPTZ,
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `;
-
-    // Миграции под продуктовый формат
-    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS unit TEXT DEFAULT 'шт'`;
-    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS weight REAL`;
-    await sql`ALTER TABLE categories DROP COLUMN IF EXISTS emoji`;
-
-    if (telegramId) {
-      await sql`
-        INSERT INTO admins (telegram_id, role)
-        VALUES (${telegramId}, 'super_admin')
-        ON CONFLICT (telegram_id) DO NOTHING
-      `;
-    }
+    await ensureCommerceSchema();
 
     // Сидируем продуктовые категории по умолчанию
     const defaultCategories = [
@@ -168,13 +69,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ok: true,
       message: "База данных инициализирована",
       productsSeeded,
-      adminAdded: telegramId ? true : false,
+      adminAdded: false,
     });
   } catch (err) {
     return sendJSON(res, 500, {
       ok: false,
       error: "Ошибка инициализации БД",
-      detail: err instanceof Error ? err.message : String(err),
     });
   }
 }

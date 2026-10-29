@@ -52,6 +52,7 @@ export function AdminsAdmin() {
     if (!confirm(`Удалить админа ${admin.telegram_id}?`)) return;
     const res = await adminsApi.remove(admin.id);
     if (res.ok) load();
+    else setError(res.error || "Не удалось удалить сотрудника");
   };
 
   return (

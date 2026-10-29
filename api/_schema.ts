@@ -20,10 +20,12 @@ async function migrate() {
       "CREATE TABLE IF NOT EXISTS shop_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT NOW())",
     );
     for (const version of [
+      "001-base",
       "002-commerce",
       "003-accounts",
       "004-profile",
       "005-privacy",
+      "006-security",
     ]) {
       const found = await client.query(
         "SELECT 1 FROM shop_migrations WHERE version=$1",

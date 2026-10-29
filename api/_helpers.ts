@@ -1,9 +1,9 @@
 import { sql } from "./_db.js";
 import type { VercelRequest } from "@vercel/node";
 import crypto from "crypto";
+import { readAdminSession } from "./_admin-session.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN || "";
-const ADMIN_KEY = process.env.ADMIN_KEY || "";
 
 export { sql };
 
@@ -69,41 +69,9 @@ export async function authenticateAdmin(req: VercelRequest): Promise<{
   authorized: boolean;
   user?: AdminUser;
 }> {
-  const authHeader = req.headers["x-admin-auth"] as string | undefined;
-
-  if (!authHeader) {
-    return { authorized: false };
-  }
-
-  const [type, token] = authHeader.split(" ");
-
-  if (type === "Key" && token && token.trim() === ADMIN_KEY.trim()) {
-    return {
-      authorized: true,
-      user: { telegramId: 0, role: "super_admin", firstName: "Admin" },
-    };
-  }
-
-  if (type === "Telegram" && token) {
-    const { valid, userId } = validateInitData(token);
-    if (!valid || !userId) return { authorized: false };
-
-    try {
-      const result =
-        await sql`SELECT telegram_id, role FROM admins WHERE telegram_id = ${userId}`;
-      if (result.rows.length > 0) {
-        const row = result.rows[0] as { telegram_id: number; role: string };
-        return {
-          authorized: true,
-          user: { telegramId: row.telegram_id, role: row.role },
-        };
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  return { authorized: false };
+  // Raw secrets and Telegram initData are accepted only at the login endpoint.
+  const user = await readAdminSession(req);
+  return user ? { authorized: true, user } : { authorized: false };
 }
 
 export function sendJSON(res: any, status: number, data: unknown) {

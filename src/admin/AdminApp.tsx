@@ -84,15 +84,37 @@ const groups = [
   },
 ];
 export function AdminApp() {
-  const [authed, setAuthed] = useState(authApi.isAuthed()),
+  const [checking, setChecking] = useState(true);
+  const [authed, setAuthed] = useState(false),
     [menu, setMenu] = useState(false),
     [counts, setCounts] = useState<Record<string, number>>({});
   const location = useLocation();
   const owner = authApi.role() === "super_admin";
-  const logout = useCallback(() => {
-    authApi.logout();
-    setAuthed(false);
-    setMenu(false);
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout();
+      setAuthed(false);
+      setMenu(false);
+    } catch {
+      window.alert(
+        "Не удалось выйти. Проверьте соединение и повторите попытку.",
+      );
+    }
+  }, []);
+  useEffect(() => {
+    let live = true;
+    authApi
+      .restore()
+      .then((value) => {
+        if (live) setAuthed(value);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (live) setChecking(false);
+      });
+    return () => {
+      live = false;
+    };
   }, []);
   useEffect(() => {
     const handler = () => setAuthed(false);
@@ -126,6 +148,7 @@ export function AdminApp() {
       window.removeEventListener("keydown", fn);
     };
   }, [menu]);
+  if (checking) return <div className="admin-root p-6">Проверяем вход…</div>;
   if (!authed)
     return (
       <div className="admin-root">

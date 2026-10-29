@@ -1,11 +1,11 @@
-const STORAGE_KEY = "tizavi_admin_auth";
-const STORAGE_TYPE = "tizavi_admin_type";
-
-function getAuthHeader(): Record<string, string> {
-  const token = localStorage.getItem(STORAGE_KEY);
-  const type = localStorage.getItem(STORAGE_TYPE) || "Key";
-  if (!token) return {};
-  return { "x-admin-auth": `${type} ${token}` };
+let adminUser: { role: string } | null = null;
+// Remove permanent credentials left by older releases without reusing them.
+for (const key of [
+  "tizavi_admin_auth",
+  "tizavi_admin_type",
+  "tizavi_admin_role",
+]) {
+  localStorage.removeItem(key);
 }
 
 export async function apiFetch<T = any>(
@@ -14,15 +14,16 @@ export async function apiFetch<T = any>(
 ): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...getAuthHeader(),
     ...(options.headers as Record<string, string>),
   };
 
-  const response = await fetch(path, { ...options, headers });
+  const response = await fetch(path, {
+    ...options,
+    headers,
+    credentials: "same-origin",
+  });
   if (response.status === 401 && !path.startsWith("/api/admin-auth")) {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(STORAGE_TYPE);
-    localStorage.removeItem("tizavi_admin_role");
+    adminUser = null;
     window.dispatchEvent(new Event("tizavi-admin-expired"));
   }
   const text = await response.text();
@@ -35,47 +36,37 @@ export async function apiFetch<T = any>(
 
 // Авторизация
 export const authApi = {
+  restore: async () => {
+    const data = await apiFetch<any>("/api/admin-auth");
+    adminUser = data.ok ? data.user : null;
+    return !!adminUser;
+  },
   loginWithKey: async (adminKey: string) => {
     const data = await apiFetch<any>("/api/admin-auth", {
       method: "POST",
       body: JSON.stringify({ adminKey }),
     });
-    if (data.ok) {
-      localStorage.setItem(STORAGE_KEY, adminKey);
-      localStorage.setItem(STORAGE_TYPE, "Key");
-      localStorage.setItem(
-        "tizavi_admin_role",
-        data.user?.role || "super_admin",
-      );
-    }
+    if (data.ok) adminUser = data.user;
     return data;
   },
-
   loginWithTelegram: async (initData: string) => {
     const data = await apiFetch<any>("/api/admin-auth", {
       method: "POST",
       body: JSON.stringify({ initData }),
     });
-    if (data.ok) {
-      localStorage.setItem(STORAGE_KEY, initData);
-      localStorage.setItem(STORAGE_TYPE, "Telegram");
-      localStorage.setItem("tizavi_admin_role", data.user?.role || "admin");
-    }
+    if (data.ok) adminUser = data.user;
     return data;
   },
-
-  logout: () => {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(STORAGE_TYPE);
-    localStorage.removeItem("tizavi_admin_role");
+  logout: async () => {
+    const data = await apiFetch<any>("/api/admin-auth", {
+      method: "POST",
+      body: JSON.stringify({ action: "logout" }),
+    });
+    if (!data.ok) throw new Error(data.error || "Не удалось выйти");
+    adminUser = null;
   },
-
-  role: () =>
-    localStorage.getItem("tizavi_admin_role") ||
-    ((localStorage.getItem(STORAGE_TYPE) || "Key") === "Key"
-      ? "super_admin"
-      : "admin"),
-  isAuthed: () => !!localStorage.getItem(STORAGE_KEY),
+  role: () => adminUser?.role || "",
+  isAuthed: () => !!adminUser,
 };
 
 // Dashboard
@@ -147,9 +138,9 @@ export const adminsApi = {
 
 // Сидирование
 export const seedApi = {
-  init: (telegramId?: number) =>
+  init: () =>
     apiFetch<any>("/api/seed", {
       method: "POST",
-      body: JSON.stringify({ telegramId }),
+      body: JSON.stringify({}),
     }),
 };

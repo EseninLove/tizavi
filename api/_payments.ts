@@ -1,3 +1,4 @@
+import { limitRequest } from "./_security.js";
 import crypto from "node:crypto";
 import { pool, sql } from "./_db.js";
 import { ensureCommerceSchema } from "./_schema.js";
@@ -13,6 +14,7 @@ export async function createPayment(
   requestKey: string,
   orderNumber?: string,
 ) {
+  await limitRequest("payment-create", String(userId), 40, 900);
   if (!(await paymentsConfigured()))
     throw new ShopError("Оплата пока не подключена", 503);
   if (
@@ -150,6 +152,18 @@ export async function reconcilePayment(id: string, userId?: number) {
   const intent = result.rows[0] as Record<string, any> | undefined;
   if (!intent || (userId !== undefined && Number(intent.user_id) !== userId))
     throw new ShopError("Платёж не найден", 404);
+  if (intent.applied_at) {
+    const order = intent.order_id
+      ? (await sql`SELECT order_number FROM orders WHERE id=${intent.order_id}`)
+          .rows[0]
+      : null;
+    return {
+      status: "succeeded",
+      kind: intent.kind,
+      orderNumber: order?.order_number || null,
+    };
+  }
+  await limitRequest("payment-check", id, 30);
   if (!intent.provider_id)
     return { status: "pending", kind: intent.kind, orderNumber: null };
   const payment = await providerStatus(intent);

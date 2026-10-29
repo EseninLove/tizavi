@@ -16,8 +16,10 @@ export function AdminLogin({ onLogin }: { onLogin: () => void }) {
     setError("");
     try {
       const d = await authApi.loginWithKey(key.trim());
-      if (d.ok) onLogin();
-      else setError(d.error || "Не удалось войти");
+      if (d.ok) {
+        setKey("");
+        onLogin();
+      } else setError(d.error || "Не удалось войти");
     } catch {
       setError("Нет соединения с сервером. Попробуйте ещё раз.");
     } finally {

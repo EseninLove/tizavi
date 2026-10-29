@@ -1,3 +1,4 @@
+import { clientAddress } from "./_security.js";
 import crypto from "node:crypto";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { sql } from "./_db.js";
@@ -171,11 +172,7 @@ export async function removeSession(req: VercelRequest, res: VercelResponse) {
 }
 export async function limitAuth(req: VercelRequest, email = "") {
   // Atomic counters live in PostgreSQL, so limits apply across serverless instances.
-  const ip = String(
-    req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown",
-  )
-    .split(",")[0]
-    .trim();
+  const ip = clientAddress(req);
   for (const value of ["ip:" + ip, ...(email ? ["email:" + email] : [])]) {
     const r = await sql<{
       attempts: number;

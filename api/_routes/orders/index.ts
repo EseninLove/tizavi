@@ -1,3 +1,4 @@
+import { limitRequest } from "../../_security.js";
 import { requireCustomer } from "../../_customer-auth.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import crypto from "node:crypto";
@@ -19,6 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { items, delivery, requestKey } = req.body || {};
       const customer = await requireCustomer(req),
         userId = Number(customer.id);
+      await limitRequest("order-create", String(userId), 30, 900);
       if (!(await hasActiveSubscription(userId)))
         return res.status(403).json({
           ok: false,

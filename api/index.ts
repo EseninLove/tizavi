@@ -1,3 +1,6 @@
+import { authenticateAdmin } from "./_helpers.js";
+import { clientAddress, limitRequest, writeAdminAudit } from "./_security.js";
+import { ShopError } from "./_commerce.js";
 import privacy from "./_routes/privacy.js";
 import customerAuth from "./_routes/customer-auth.js";
 import emailSettings from "./_routes/email-settings.js";
@@ -59,11 +62,67 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
   try {
+    const adminRoutes = [
+      "admins",
+      "admin-auth",
+      "dashboard",
+      "delivery-admin",
+      "email-settings",
+      "payment-settings",
+      "seed",
+      "users",
+    ];
+    if (adminRoutes.includes(route) && route !== "admin-auth") {
+      await limitRequest("admin-api", clientAddress(req), 180);
+      if (!(await authenticateAdmin(req)).authorized)
+        return res
+          .status(401)
+          .json({ ok: false, error: "Сессия завершена. Войдите снова." });
+    }
+    const administrativeMutation =
+      ["POST", "PUT", "DELETE"].includes(req.method || "") &&
+      ([
+        "categories",
+        "products",
+        "delivery-admin",
+        "email-settings",
+        "payment-settings",
+        "seed",
+      ].includes(route) ||
+        (["orders", "support", "reviews", "privacy"].includes(route) &&
+          req.method === "PUT"));
+    if (administrativeMutation) {
+      const auth = await authenticateAdmin(req);
+      if (auth.authorized && auth.user) {
+        const actor = auth.user.telegramId
+          ? `telegram:${auth.user.telegramId}`
+          : "owner-key";
+        const json = res.json.bind(res);
+        res.json = ((data: unknown) => {
+          const status = res.statusCode;
+          return writeAdminAudit(
+            actor,
+            `${req.method}:${route}`,
+            /^\d{1,16}$/.test(String(req.query.id || ""))
+              ? String(req.query.id)
+              : null,
+            status,
+          )
+            .catch(() => {
+              console.error("[security] admin audit write failed");
+            })
+            .then(() => json(data));
+        }) as unknown as typeof res.json;
+      }
+    }
     return await routes[route](req, res);
-  } catch {
-    return res.status(503).json({
+  } catch (e) {
+    return res.status(e instanceof ShopError ? e.status : 503).json({
       ok: false,
-      error: "Сервис временно недоступен. Повторите попытку.",
+      error:
+        e instanceof ShopError
+          ? e.message
+          : "Сервис временно недоступен. Повторите попытку.",
     });
   }
 }
