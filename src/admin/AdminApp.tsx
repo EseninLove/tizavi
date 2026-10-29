@@ -1,7 +1,15 @@
+import { staffPageAllowed, staffHome, staffRoleLabel } from "../shared/staff";
 import { PrivacyAdmin } from "./PrivacyAdmin";
 import { EmailSettingsAdmin } from "./EmailSettingsAdmin";
 import { useCallback, useEffect, useState } from "react";
-import { Routes, Route, NavLink, useLocation, Link } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  NavLink,
+  useLocation,
+  Link,
+  Navigate,
+} from "react-router-dom";
 import { authApi, apiFetch } from "./api";
 import { AdminLogin } from "./AdminLogin";
 import { Dashboard } from "./Dashboard";
@@ -89,7 +97,13 @@ export function AdminApp() {
     [menu, setMenu] = useState(false),
     [counts, setCounts] = useState<Record<string, number>>({});
   const location = useLocation();
-  const owner = authApi.role() === "super_admin";
+  const role = authApi.role();
+  const visibleGroups = groups
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((i) => staffPageAllowed(role, i.path)),
+    }))
+    .filter((g) => g.items.length);
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
@@ -123,7 +137,7 @@ export function AdminApp() {
   }, []);
   useEffect(() => {
     setMenu(false);
-    if (authed)
+    if (authed && staffPageAllowed(role, "/admin"))
       apiFetch("/api/dashboard")
         .then((d) => {
           if (d.ok)
@@ -134,7 +148,7 @@ export function AdminApp() {
             );
         })
         .catch(() => {});
-  }, [location.pathname, authed]);
+  }, [location.pathname, authed, role]);
   useEffect(() => {
     if (!menu) return;
     const prev = document.body.style.overflow;
@@ -196,29 +210,27 @@ export function AdminApp() {
           )}
         </div>
         <nav>
-          {groups.map((g) => (
+          {visibleGroups.map((g) => (
             <div key={g.label}>
               <div className="admin-nav-group">{g.label}</div>
-              {g.items
-                .filter((i) => !("owner" in i && i.owner && !owner))
-                .map((i) => (
-                  <NavLink
-                    key={i.path}
-                    to={i.path}
-                    end={i.path === "/admin"}
-                    className={({ isActive }) =>
-                      `admin-nav-link ${isActive ? "active" : ""}`
-                    }
-                  >
-                    <AdminIcon name={i.icon} />
-                    {i.label}
-                    {"badge" in i && Number(counts[String(i.badge)]) > 0 && (
-                      <span className="admin-nav-count">
-                        {counts[String(i.badge)]}
-                      </span>
-                    )}
-                  </NavLink>
-                ))}
+              {g.items.map((i) => (
+                <NavLink
+                  key={i.path}
+                  to={i.path}
+                  end={i.path === "/admin"}
+                  className={({ isActive }) =>
+                    `admin-nav-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <AdminIcon name={i.icon} />
+                  {i.label}
+                  {"badge" in i && Number(counts[String(i.badge)]) > 0 && (
+                    <span className="admin-nav-count">
+                      {counts[String(i.badge)]}
+                    </span>
+                  )}
+                </NavLink>
+              ))}
             </div>
           ))}
         </nav>
@@ -229,7 +241,7 @@ export function AdminApp() {
           </Link>
           <button onClick={logout}>
             <AdminIcon name="logout" />
-            {owner ? "Владелец" : "Администратор"} · Выйти
+            {staffRoleLabel(role)} · Выйти
           </button>
         </div>
       </aside>
@@ -241,37 +253,44 @@ export function AdminApp() {
             Открыть магазин
           </Link>
         </div>
-        <Routes>
-          <Route index element={<Dashboard />} />
-          <Route path="products" element={<ProductsAdmin />} />
-          <Route path="categories" element={<CategoriesAdmin />} />
-          <Route path="orders" element={<OrdersAdmin />} />
-          <Route path="users" element={<UsersAdmin />} />
-          <Route path="support" element={<SupportAdmin />} />
-          <Route path="admins" element={<AdminsAdmin />} />
-          <Route path="email" element={<EmailSettingsAdmin />} />
-          <Route path="payments" element={<PaymentsAdmin />} />
-          <Route path="delivery" element={<DeliveryAdmin />} />
-          <Route path="reviews" element={<ReviewsAdmin />} />
-          <Route path="privacy" element={<PrivacyAdmin />} />
-          <Route path="settings" element={<Settings />} />
-        </Routes>
+        {staffPageAllowed(role, location.pathname) ? (
+          <Routes>
+            <Route index element={<Dashboard />} />
+            <Route path="products" element={<ProductsAdmin />} />
+            <Route path="categories" element={<CategoriesAdmin />} />
+            <Route path="orders" element={<OrdersAdmin />} />
+            <Route path="users" element={<UsersAdmin />} />
+            <Route path="support" element={<SupportAdmin />} />
+            <Route path="admins" element={<AdminsAdmin />} />
+            <Route path="email" element={<EmailSettingsAdmin />} />
+            <Route path="payments" element={<PaymentsAdmin />} />
+            <Route path="delivery" element={<DeliveryAdmin />} />
+            <Route path="reviews" element={<ReviewsAdmin />} />
+            <Route path="privacy" element={<PrivacyAdmin />} />
+            <Route path="settings" element={<Settings />} />
+          </Routes>
+        ) : (
+          <Navigate to={staffHome(role)} replace />
+        )}
       </main>
       <nav className="admin-mobile-shortcuts" aria-label="Быстрые разделы">
         {[
           { path: "orders", label: "Заказы", icon: "orders" },
           { path: "products", label: "Товары", icon: "products" },
           { path: "support", label: "Поддержка", icon: "support" },
-        ].map((i) => (
-          <NavLink
-            key={i.path}
-            to={`/admin/${i.path}`}
-            className={({ isActive }) => (isActive ? "active" : "")}
-          >
-            <AdminIcon name={i.icon} />
-            {i.label}
-          </NavLink>
-        ))}
+          { path: "delivery", label: "Доставка", icon: "delivery" },
+        ]
+          .filter((i) => staffPageAllowed(role, `/admin/${i.path}`))
+          .map((i) => (
+            <NavLink
+              key={i.path}
+              to={`/admin/${i.path}`}
+              className={({ isActive }) => (isActive ? "active" : "")}
+            >
+              <AdminIcon name={i.icon} />
+              {i.label}
+            </NavLink>
+          ))}
       </nav>
     </div>
   );

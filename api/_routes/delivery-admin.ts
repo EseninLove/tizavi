@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { authenticateAdmin } from "../_helpers.js";
+import { authorizeStaff } from "../_helpers.js";
 import { sql } from "../_db.js";
 import { ensureCommerceSchema } from "../_schema.js";
 import { ShopError, positiveInteger } from "../_commerce.js";
@@ -10,8 +10,7 @@ function number(v: unknown, min: number, max: number) {
   return n;
 }
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (!(await authenticateAdmin(req)).authorized)
-    return res.status(401).json({ ok: false, error: "Нет доступа" });
+  if (!(await authorizeStaff(req, res, "delivery"))) return;
   try {
     await ensureCommerceSchema();
     if (req.method === "POST") {

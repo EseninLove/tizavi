@@ -3,7 +3,7 @@ import { requireCustomer } from "../../_customer-auth.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import crypto from "node:crypto";
 import { sql, pool } from "../../_db.js";
-import { authenticateAdmin } from "../../_helpers.js";
+import { authorizeStaff } from "../../_helpers.js";
 import { hasActiveSubscription } from "../../_subscription.js";
 import { ensureCommerceSchema } from "../../_schema.js";
 import {
@@ -87,8 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .status(201)
         .json({ ok: true, order: mapOrder(result.rows[0]) });
     }
-    if (!(await authenticateAdmin(req)).authorized)
-      return res.status(401).json({ ok: false, error: "Нет доступа" });
+    if (!(await authorizeStaff(req, res, "orders"))) return;
     await ensureCommerceSchema();
     if (req.method === "GET") {
       const status =

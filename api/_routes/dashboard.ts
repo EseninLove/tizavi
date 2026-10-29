@@ -1,10 +1,9 @@
 import { ensureCommerceSchema } from "../_schema.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { sql, authenticateAdmin, sendJSON, unauthorized } from "../_helpers.js";
+import { sql, authorizeStaff, sendJSON } from "../_helpers.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const { authorized } = await authenticateAdmin(req);
-  if (!authorized) return unauthorized(res);
+  if (!(await authorizeStaff(req, res, "overview"))) return;
 
   if (req.method !== "GET") {
     return sendJSON(res, 405, { ok: false, error: "Method not allowed" });

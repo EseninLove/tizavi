@@ -2,7 +2,7 @@ import { limitRequest } from "../_security.js";
 import { ShopError } from "../_commerce.js";
 import { requireCustomer } from "../_customer-auth.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { sql, authenticateAdmin, sendJSON, unauthorized } from "../_helpers.js";
+import { sql, authorizeStaff, sendJSON } from "../_helpers.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN || "";
 
@@ -12,7 +12,8 @@ async function notifyAdmins(): Promise<void> {
   if (!BOT_TOKEN) return;
 
   try {
-    const admins = await sql`SELECT telegram_id FROM admins`;
+    const admins =
+      await sql`SELECT telegram_id FROM admins WHERE role IN ('super_admin','admin','support')`;
     const text =
       "В магазине новое обращение в поддержку. Подробности доступны в защищённой админке.";
 
@@ -118,8 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  const { authorized } = await authenticateAdmin(req);
-  if (!authorized) return unauthorized(res);
+  if (!(await authorizeStaff(req, res, "support"))) return;
 
   // GET /api/support — список тикетов (админ)
   if (req.method === "GET") {

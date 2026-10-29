@@ -1,3 +1,4 @@
+import { isStaffRole } from "../src/shared/staff.js";
 import crypto from "node:crypto";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { sql } from "./_db.js";
@@ -53,7 +54,7 @@ export async function readAdminSession(req: VercelRequest) {
   ).rows[0];
   if (!row) return null;
   if (row.telegram_id !== null) {
-    if (!["admin", "super_admin"].includes(String(row.role))) return null;
+    if (!isStaffRole(row.role)) return null;
     return { telegramId: Number(row.telegram_id), role: String(row.role) };
   }
   const version = adminKeyVersion();

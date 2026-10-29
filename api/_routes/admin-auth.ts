@@ -1,3 +1,4 @@
+import { isStaffRole } from "../../src/shared/staff.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { authenticateAdmin, validateInitData, sql } from "../_helpers.js";
 import { createAdminSession, removeAdminSession } from "../_admin-session.js";
@@ -47,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const row = (
           await sql`SELECT role FROM admins WHERE telegram_id=${auth.userId}`
         ).rows[0];
-        if (row && ["admin", "super_admin"].includes(String(row.role)))
+        if (row && isStaffRole(row.role))
           user = { telegramId: auth.userId, role: String(row.role) };
       }
     }

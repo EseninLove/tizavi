@@ -367,6 +367,11 @@ export function Profile() {
             <p>Вопросы о заказах, доставке или подписке.</p>
           </Link>
           <div className="profile-documents">
+            {account?.telegramId && (
+              <Link to="/admin">
+                Панель сотрудников <span aria-hidden="true">↗</span>
+              </Link>
+            )}
             <Link to="/profile/privacy">
               Мои персональные данные <span aria-hidden="true">↗</span>
             </Link>

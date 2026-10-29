@@ -127,10 +127,15 @@ export const usersApi = {
 // Администраторы
 export const adminsApi = {
   list: () => apiFetch<any>("/api/admins"),
-  add: (telegramId: number, role?: string) =>
+  add: (telegramId: number, role?: string, name = "") =>
     apiFetch<any>("/api/admins", {
       method: "POST",
-      body: JSON.stringify({ telegramId, role }),
+      body: JSON.stringify({ telegramId, role, name }),
+    }),
+  update: (id: number, name: string, role: string) =>
+    apiFetch<any>(`/api/admins?id=${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ name, role }),
     }),
   remove: (id: number) =>
     apiFetch<any>(`/api/admins?id=${id}`, { method: "DELETE" }),

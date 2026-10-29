@@ -1,7 +1,23 @@
+import { useTelegram } from "../lib/telegram";
 import { useState } from "react";
 import { authApi } from "./api";
 import { AdminIcon, AdminNotice } from "./AdminUI";
 export function AdminLogin({ onLogin }: { onLogin: () => void }) {
+  const { webApp } = useTelegram();
+  const telegramLogin = async () => {
+    if (busy || !webApp?.initData) return;
+    setBusy(true);
+    setError("");
+    try {
+      const d = await authApi.loginWithTelegram(webApp.initData);
+      if (d.ok) onLogin();
+      else setError(d.error || "Нет доступа к панели сотрудников");
+    } catch {
+      setError("Не удалось войти. Проверьте соединение.");
+    } finally {
+      setBusy(false);
+    }
+  };
   const [key, setKey] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -53,13 +69,28 @@ export function AdminLogin({ onLogin }: { onLogin: () => void }) {
         </div>
         <h1>Tizavi</h1>
         <p className="mb-7 mt-1">Вход в управление магазином</p>
+        {webApp?.initData && (
+          <div className="mb-6">
+            <button
+              className="admin-primary w-full"
+              disabled={busy}
+              onClick={() => void telegramLogin()}
+            >
+              {busy ? "Проверяем…" : "Войти через Telegram"}
+            </button>
+            <p className="admin-hint mt-2">
+              Для сотрудников, которых добавил владелец. Если магазин открыт
+              давно, закройте и откройте его заново перед входом.
+            </p>
+          </div>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             void login();
           }}
         >
-          <label htmlFor="admin-key">Ключ администратора</label>
+          <label htmlFor="admin-key">Ключ владельца</label>
           <input
             id="admin-key"
             type="password"

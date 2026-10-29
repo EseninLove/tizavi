@@ -1,5 +1,9 @@
+import {
+  hasStaffPermission,
+  type StaffPermission,
+} from "../src/shared/staff.js";
 import { sql } from "./_db.js";
-import type { VercelRequest } from "@vercel/node";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import crypto from "crypto";
 import { readAdminSession } from "./_admin-session.js";
 
@@ -72,6 +76,25 @@ export async function authenticateAdmin(req: VercelRequest): Promise<{
   // Raw secrets and Telegram initData are accepted only at the login endpoint.
   const user = await readAdminSession(req);
   return user ? { authorized: true, user } : { authorized: false };
+}
+
+export async function authorizeStaff(
+  req: VercelRequest,
+  res: VercelResponse,
+  permission: StaffPermission,
+) {
+  const auth = await authenticateAdmin(req);
+  if (!auth.authorized) {
+    res.status(401).json({ ok: false, error: "Войдите в панель сотрудников" });
+    return false;
+  }
+  if (!hasStaffPermission(auth.user?.role, permission)) {
+    res
+      .status(403)
+      .json({ ok: false, error: "Этот раздел недоступен для вашей роли" });
+    return false;
+  }
+  return true;
 }
 
 export function sendJSON(res: any, status: number, data: unknown) {

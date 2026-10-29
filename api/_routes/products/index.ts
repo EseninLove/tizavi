@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { sql } from "../../_db.js";
-import { authenticateAdmin } from "../../_helpers.js";
+import { authorizeStaff } from "../../_helpers.js";
 import { ensureCommerceSchema } from "../../_schema.js";
 import { positiveInteger, ShopError } from "../../_commerce.js";
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -17,8 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ORDER BY p.sort_order ASC,p.created_at DESC`;
       return res.json({ ok: true, products: products.rows });
     }
-    if (!(await authenticateAdmin(req)).authorized)
-      return res.status(401).json({ ok: false, error: "Нет доступа" });
+    if (!(await authorizeStaff(req, res, "catalog"))) return;
     if (req.method === "DELETE") {
       await sql`DELETE FROM products WHERE id=${positiveInteger(req.query.id)}`;
       return res.json({ ok: true });

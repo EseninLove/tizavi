@@ -1,10 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import {
-  sql,
-  authenticateAdmin,
-  sendJSON,
-  unauthorized,
-} from "../../_helpers.js";
+import { sql, authorizeStaff, sendJSON } from "../../_helpers.js";
 import { ensureCommerceSchema } from "../../_schema.js";
 import crypto from "node:crypto";
 
@@ -24,8 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  const { authorized } = await authenticateAdmin(req);
-  if (!authorized) return unauthorized(res);
+  if (!(await authorizeStaff(req, res, "catalog"))) return;
 
   // POST /api/categories — создание
   if (req.method === "POST") {

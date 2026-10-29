@@ -1,6 +1,6 @@
 import { requireCustomer } from "../_customer-auth.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { sql, authenticateAdmin } from "../_helpers.js";
+import { sql, authorizeStaff } from "../_helpers.js";
 import { ensureCommerceSchema } from "../_schema.js";
 import { positiveInteger, ShopError } from "../_commerce.js";
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -8,8 +8,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await ensureCommerceSchema();
     if (req.method === "GET") {
       if (req.query.admin === "true") {
-        if (!(await authenticateAdmin(req)).authorized)
-          return res.status(401).json({ ok: false });
+        if (!(await authorizeStaff(req, res, "reviews"))) return;
         return res.json({
           ok: true,
           reviews: (
@@ -25,8 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     if (req.method === "PUT") {
-      if (!(await authenticateAdmin(req)).authorized)
-        return res.status(401).json({ ok: false });
+      if (!(await authorizeStaff(req, res, "reviews"))) return;
       await sql`UPDATE product_reviews SET visible=${req.body?.visible === true} WHERE id=${positiveInteger(req.body?.id)}`;
       return res.json({ ok: true });
     }

@@ -298,6 +298,140 @@ test("administrative sessions enforce owner permissions, CSRF, expiry, revocatio
       null,
       "removal revokes existing sessions",
     );
+    // Each job gets only its own operational endpoints; public catalog reads stay public.
+    const roleCases = [
+      {
+        role: "order_manager",
+        allow: ["orders"],
+        deny: ["dashboard", "users", "support", "delivery-admin"],
+      },
+      {
+        role: "catalog_manager",
+        allow: ["reviews"],
+        deny: ["dashboard", "users", "orders", "support", "delivery-admin"],
+      },
+      {
+        role: "support",
+        allow: ["support", "reviews"],
+        deny: ["dashboard", "users", "orders", "delivery-admin"],
+      },
+      {
+        role: "logistics",
+        allow: ["delivery-admin"],
+        deny: ["dashboard", "users", "orders", "support"],
+      },
+    ];
+    let employeeId = 200;
+    for (const item of roleCases) {
+      const tid = employeeId++;
+      const added = await call(
+        admins,
+        "POST",
+        { telegramId: tid, role: item.role, name: "Local employee" },
+        ownerHeaders,
+      );
+      assert.equal(added.status, 201);
+      assert.equal(
+        (
+          await call(
+            admins,
+            "POST",
+            { telegramId: tid, role: "admin", name: "Duplicate" },
+            ownerHeaders,
+          )
+        ).status,
+        409,
+      );
+      const employee = await call(
+        login,
+        "POST",
+        { initData: signed(tid) },
+        origin,
+      );
+      assert.equal(employee.status, 200, JSON.stringify(employee.body));
+      const eh = {
+        ...origin,
+        cookie: employee.headers["set-cookie"].split(";")[0],
+      };
+      for (const route of item.allow)
+        assert.equal(
+          (
+            await call(router, "GET", {}, eh, {
+              route,
+              ...(route === "reviews" ? { admin: "true" } : {}),
+            })
+          ).status,
+          200,
+          `${item.role} can read ${route}`,
+        );
+      for (const route of item.deny)
+        assert.equal(
+          (await call(router, "GET", {}, eh, { route })).status,
+          403,
+          `${item.role} cannot read ${route}`,
+        );
+      for (const route of ["admins", "payment-settings", "email-settings"])
+        assert.equal(
+          (await call(router, "GET", {}, eh, { route })).status,
+          403,
+        );
+      assert.equal(
+        (
+          await call(router, "PUT", { name: "Blocked" }, eh, {
+            route: "categories",
+            id: "999",
+          })
+        ).status,
+        item.role === "catalog_manager" ? 200 : 403,
+      );
+      assert.equal(
+        (await call(router, "DELETE", {}, eh, { route: "products", id: "999" }))
+          .status,
+        item.role === "catalog_manager" ? 200 : 403,
+      );
+      assert.equal(
+        (
+          await call(admins, "PUT", { name: "Self", role: "super_admin" }, eh, {
+            id: "1",
+          })
+        ).status,
+        403,
+      );
+      const record = (
+        await query("SELECT id,name FROM admins WHERE telegram_id=$1", [tid])
+      ).rows[0];
+      assert.equal(record.name, "Local employee");
+      assert.equal(
+        (
+          await call(
+            admins,
+            "PUT",
+            { name: "Changed employee", role: "admin" },
+            ownerHeaders,
+            { id: String(record.id) },
+          )
+        ).status,
+        200,
+      );
+      assert.equal(
+        (await call(login, "GET", {}, eh)).body.user,
+        null,
+        "role update revokes previous sessions",
+      );
+    }
+    assert.equal(
+      (
+        await call(
+          admins,
+          "PUT",
+          { name: "Owner", role: "support" },
+          ownerHeaders,
+          { id: String(ownerId) },
+        )
+      ).status,
+      409,
+      "last owner cannot be demoted",
+    );
     // Central audit never saves request bodies, passwords or payment credentials.
     assert.equal(
       (
