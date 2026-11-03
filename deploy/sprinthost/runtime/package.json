@@ -1,0 +1,9 @@
+{
+  "name": "tizavi-sprinthost-runtime",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "pg": "8.23.1",
+    "tsx": "4.23.15"
+  }
+}

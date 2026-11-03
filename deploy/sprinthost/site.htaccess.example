@@ -1,0 +1,8 @@
+PassengerEnabled on
+PassengerAppType node
+PassengerStartupFile app.cjs
+PassengerAppRoot /home/LOGIN/apps/tizavi/current
+PassengerNodejs /usr/local/bin/node22
+PassengerAppEnv production
+Options -MultiViews
+Require all granted
