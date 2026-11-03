@@ -23,14 +23,26 @@ try {
 }
 for (const key of ["sslmode", "sslcert", "sslkey", "sslrootcert"])
   safeConnection?.searchParams.delete(key);
+// Shared-hosting PostgreSQL may accept only local unencrypted TCP. This opt-in
+// must never disable TLS for a remote host or an ambiguous connection string.
+const localDatabase = process.env.DB_SSL_MODE === "local";
+if (
+  localDatabase &&
+  (!safeConnection ||
+    !["localhost", "127.0.0.1", "[::1]"].includes(safeConnection.hostname))
+) {
+  throw new Error("DB_SSL_MODE=local requires a loopback database URL");
+}
 export const pool = new Pool({
   connectionString: safeConnection?.toString() || connectionString,
-  ssl: {
-    rejectUnauthorized: true,
-    ...(process.env.DB_SSL_CA
-      ? { ca: process.env.DB_SSL_CA.replace(/\\n/g, "\n") }
-      : {}),
-  },
+  ssl: localDatabase
+    ? false
+    : {
+        rejectUnauthorized: true,
+        ...(process.env.DB_SSL_CA
+          ? { ca: process.env.DB_SSL_CA.replace(/\\n/g, "\n") }
+          : {}),
+      },
   max: 3,
   idleTimeoutMillis: 20000,
   connectionTimeoutMillis: 10000,
