@@ -1,3 +1,5 @@
+// Bound esbuild worker threads on shared hosting.
+process.env.GOMAXPROCS = "2";
 const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
