@@ -1,6 +1,7 @@
 import { authenticateAdmin } from "./_helpers.js";
 import { clientAddress, limitRequest, writeAdminAudit } from "./_security.js";
 import { ShopError } from "./_commerce.js";
+import moysklad from "./_routes/moysklad.js";
 import privacy from "./_routes/privacy.js";
 import customerAuth from "./_routes/customer-auth.js";
 import emailSettings from "./_routes/email-settings.js";
@@ -29,6 +30,7 @@ const routes: Record<
   (req: VercelRequest, res: VercelResponse) => unknown
 > = {
   "customer-auth": customerAuth,
+  moysklad,
   privacy,
   "email-settings": emailSettings,
   admins,
@@ -69,6 +71,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       "delivery-admin",
       "email-settings",
       "payment-settings",
+      "moysklad",
       "seed",
       "users",
     ];
@@ -87,6 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         "delivery-admin",
         "email-settings",
         "payment-settings",
+        "moysklad",
         "seed",
       ].includes(route) ||
         (["orders", "support", "reviews", "privacy"].includes(route) &&

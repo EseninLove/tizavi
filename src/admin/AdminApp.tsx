@@ -1,4 +1,5 @@
 import { staffPageAllowed, staffHome, staffRoleLabel } from "../shared/staff";
+import { MoyskladAdmin } from "./MoyskladAdmin";
 import { PrivacyAdmin } from "./PrivacyAdmin";
 import { EmailSettingsAdmin } from "./EmailSettingsAdmin";
 import { useCallback, useEffect, useState } from "react";
@@ -78,6 +79,12 @@ const groups = [
         path: "/admin/payments",
         label: "Оплата",
         icon: "payments",
+        owner: true,
+      },
+      {
+        path: "/admin/moysklad",
+        label: "МойСклад",
+        icon: "products",
         owner: true,
       },
       { path: "/admin/delivery", label: "Доставка", icon: "delivery" },
@@ -262,6 +269,7 @@ export function AdminApp() {
             <Route path="users" element={<UsersAdmin />} />
             <Route path="support" element={<SupportAdmin />} />
             <Route path="admins" element={<AdminsAdmin />} />
+            <Route path="moysklad" element={<MoyskladAdmin />} />
             <Route path="email" element={<EmailSettingsAdmin />} />
             <Route path="payments" element={<PaymentsAdmin />} />
             <Route path="delivery" element={<DeliveryAdmin />} />

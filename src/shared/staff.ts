@@ -89,6 +89,7 @@ export function staffPageAllowed(role: unknown, path: string) {
     "/admin/delivery": "delivery",
     "/admin/admins": "staff",
     "/admin/email": "settings",
+    "/admin/moysklad": "settings",
     "/admin/payments": "settings",
     "/admin/privacy": "settings",
     "/admin/settings": "settings",

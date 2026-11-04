@@ -41,6 +41,17 @@ export function Settings() {
 
       {authApi.role() === "super_admin" && (
         <section className="admin-card">
+          <h2>МойСклад</h2>
+          <p className="admin-hint mb-4">
+            Подключение аккаунта, выбор организации, склада и типа цен.
+          </p>
+          <Link className="admin-primary" to="/admin/moysklad">
+            Настроить МойСклад
+          </Link>
+        </section>
+      )}
+      {authApi.role() === "super_admin" && (
+        <section className="admin-card">
           <h2>Почтовый сервис</h2>
           <p className="admin-hint mb-4">
             Регистрация по email работает без подтверждения. Отправка писем пока
