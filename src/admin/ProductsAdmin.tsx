@@ -12,6 +12,10 @@ const unitBadge = (p: { unit?: string; weight?: number | null }) => {
 };
 
 interface ProductRow {
+  moysklad_id?: string;
+  moysklad_hidden?: boolean;
+  moysklad_issue?: string;
+  stock_available?: number;
   id: number;
   name: string;
   description: string;
@@ -248,6 +252,12 @@ export function ProductsAdmin() {
         value={stockFilter}
         onChange={setStockFilter}
       />
+      <p className="admin-hint">
+        У товаров из МоегоСклада название, фото, описание, цена, категория и
+        наличие обновляются автоматически. Здесь настраиваются акции, оценки,
+        поиск и оформление. Для удаления с витрины архивируйте товар в
+        МоёмСкладе.
+      </p>
       {error && !showForm && (
         <p role="alert" className="text-red-600">
           {error}
@@ -298,6 +308,18 @@ export function ProductsAdmin() {
                           <div className="text-xs text-gray-400">
                             {unitBadge(p)}
                           </div>
+                          {p.moysklad_id && (
+                            <p className="text-xs text-green-700">
+                              МойСклад · Остаток: {p.stock_available ?? 0}{" "}
+                              {p.unit}
+                              {p.moysklad_hidden ? " · Скрыт" : ""}
+                            </p>
+                          )}
+                          {p.moysklad_issue && (
+                            <p className="text-xs text-amber-700 max-w-xs">
+                              {p.moysklad_issue}
+                            </p>
+                          )}
                           {p.badge && (
                             <span className="text-xs text-blue-500">
                               {p.badge}
@@ -333,6 +355,7 @@ export function ProductsAdmin() {
                           Изменить
                         </button>
                         <button
+                          disabled={!!p.moysklad_id}
                           onClick={() => handleDelete(p)}
                           className="text-red-500 hover:text-red-700 text-sm font-medium"
                         >
@@ -377,6 +400,7 @@ export function ProductsAdmin() {
                     Изменить
                   </button>
                   <button
+                    disabled={!!p.moysklad_id}
                     onClick={() => handleDelete(p)}
                     className="text-red-500 text-xs font-medium"
                   >
@@ -431,6 +455,7 @@ export function ProductsAdmin() {
                   <input
                     className="admin-input"
                     value={form.name}
+                    disabled={!!editing?.moysklad_id}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                   />
                 </FormField>
@@ -438,6 +463,7 @@ export function ProductsAdmin() {
                   <select
                     className="admin-input"
                     value={form.category}
+                    disabled={!!editing?.moysklad_id}
                     onChange={(e) =>
                       setForm({ ...form, category: e.target.value })
                     }
@@ -455,6 +481,7 @@ export function ProductsAdmin() {
                     className="admin-input resize-none"
                     rows={3}
                     value={form.description}
+                    disabled={!!editing?.moysklad_id}
                     onChange={(e) =>
                       setForm({ ...form, description: e.target.value })
                     }
@@ -483,6 +510,7 @@ export function ProductsAdmin() {
                   <input
                     type="checkbox"
                     checked={form.in_stock}
+                    disabled={!!editing?.moysklad_id}
                     onChange={(e) =>
                       setForm({ ...form, in_stock: e.target.checked })
                     }
@@ -499,6 +527,7 @@ export function ProductsAdmin() {
                       type="number"
                       className="admin-input"
                       value={form.price}
+                      disabled={!!editing?.moysklad_id}
                       onChange={(e) =>
                         setForm({ ...form, price: e.target.value })
                       }
@@ -520,6 +549,7 @@ export function ProductsAdmin() {
                     <select
                       className="admin-input"
                       value={form.unit}
+                      disabled={!!editing?.moysklad_id}
                       onChange={(e) =>
                         setForm({ ...form, unit: e.target.value })
                       }
@@ -545,6 +575,7 @@ export function ProductsAdmin() {
                         min="0"
                         className="admin-input"
                         value={form.weight}
+                        disabled={!!editing?.moysklad_id}
                         onChange={(e) =>
                           setForm({ ...form, weight: e.target.value })
                         }
@@ -579,6 +610,7 @@ export function ProductsAdmin() {
                   <input
                     className="admin-input"
                     value={form.image}
+                    disabled={!!editing?.moysklad_id}
                     onChange={(e) =>
                       setForm({ ...form, image: e.target.value })
                     }

@@ -134,6 +134,7 @@ test("MoySklad settings require owner and CSRF, encrypt secrets, preserve workin
     body: any = {},
     cookie = "",
     otherHeaders: Record<string, string> = {},
+    queryValues: Record<string, string> = {},
   ) => {
     let data: any;
     const headers: Record<string, string> = {};
@@ -156,7 +157,7 @@ test("MoySklad settings require owner and CSRF, encrypt secrets, preserve workin
       {
         method,
         body,
-        query: { route },
+        query: { route, ...queryValues },
         headers: { ...origin, cookie, ...otherHeaders },
         socket: { remoteAddress: "127.0.0.1" },
       } as any,
@@ -372,6 +373,170 @@ test("MoySklad settings require owner and CSRF, encrypt secrets, preserve workin
         .status,
       200,
     );
+    const currencyId = "66666666-6666-6666-6666-666666666666";
+    const productId = "77777777-7777-7777-7777-777777777777";
+    const sourceProduct: any = {
+      id: productId,
+      name: "Импортированный товар",
+      description: "Описание",
+      uom: { name: "шт" },
+      productFolder: { id: folders[0].id },
+      salePrices: [
+        {
+          value: 19995,
+          priceType: { id: ids.price },
+          currency: { id: currencyId },
+        },
+      ],
+      images: {
+        rows: [
+          {
+            updated: "v1",
+            miniature: {
+              downloadHref: `https://miniature-prod.moysklad.ru/miniature/${ids.organization}/documentminiature/${ids.store}`,
+            },
+          },
+        ],
+      },
+    };
+    let productRows: any[] = [sourceProduct],
+      stockFailure = false,
+      stockAmount = 5;
+    const categoriesTransport = globalThis.fetch;
+    globalThis.fetch = (async (input: any, opts: any) => {
+      const url = String(input);
+      if (url.startsWith("https://miniature-prod.moysklad.ru/")) {
+        assert.equal(opts.headers, undefined);
+        return new Response(Buffer.from("89504e470d0a1a0a", "hex"));
+      }
+      if (url.includes("/entity/currency?"))
+        return Response.json({
+          rows: [{ id: currencyId, code: "643", isoCode: "RUB" }],
+        });
+      if (url.includes("/entity/product?"))
+        return Response.json({ rows: productRows });
+      if (url.includes("/report/stock/all?")) {
+        assert.ok(
+          decodeURIComponent(url).includes("/entity/store/" + ids.store),
+        );
+        return stockFailure
+          ? new Response("secret upstream", { status: 503 })
+          : Response.json({
+              rows: [
+                {
+                  meta: { href: `${MOYSKLAD_API}/entity/product/${productId}` },
+                  stock: stockAmount,
+                  reserve: 2,
+                  inTransit: 100,
+                },
+              ],
+            });
+      }
+      return categoriesTransport(input, opts);
+    }) as typeof fetch;
+    const imported = await call(
+      "moysklad",
+      "POST",
+      { action: "products-sync" },
+      cookie,
+    );
+    assert.equal(imported.status, 200, JSON.stringify(imported.data));
+    assert.equal(imported.data.productResult.created, 1);
+    assert.equal(imported.data.productsEnabled, true);
+    const first = (
+      await query("SELECT * FROM products WHERE moysklad_id=$1", [productId])
+    ).rows[0] as any;
+    assert.equal(Number(first.price), 199.95);
+    assert.equal(Number(first.stock_available), 3);
+    assert.equal(first.in_stock, true);
+    assert.ok(first.image.startsWith("/api/product-image?id="));
+    assert.equal(
+      (await query("SELECT COUNT(*)::int AS n FROM moysklad_product_images"))
+        .rows[0].n,
+      1,
+    );
+    await query(
+      "UPDATE products SET rating=4,reviews_count=2,popular=TRUE,old_price=250 WHERE id=$1",
+      [first.id],
+    );
+    sourceProduct.name = "Новое название";
+    sourceProduct.productFolder = { id: folders[1].id };
+    sourceProduct.salePrices[0].value = 30050;
+    const repeated = await call(
+      "moysklad",
+      "POST",
+      { action: "products-sync" },
+      cookie,
+    );
+    assert.equal(repeated.data.productResult.created, 0);
+    const changed = (
+      await query("SELECT * FROM products WHERE id=$1", [first.id])
+    ).rows[0] as any;
+    assert.equal(changed.name, "Новое название");
+    assert.equal(Number(changed.price), 300.5);
+    assert.equal(changed.rating, 4);
+    assert.equal(changed.reviews_count, 2);
+    assert.equal(changed.popular, true);
+    assert.equal(changed.old_price, null);
+    assert.notEqual(changed.category, first.category);
+    stockFailure = true;
+    sourceProduct.name = "Не применять";
+    assert.equal(
+      (await call("moysklad", "POST", { action: "products-sync" }, cookie))
+        .status,
+      503,
+    );
+    assert.equal(
+      (await query("SELECT name FROM products WHERE id=$1", [first.id])).rows[0]
+        .name,
+      "Новое название",
+    );
+    stockFailure = false;
+    stockAmount = 0;
+    assert.equal(
+      (await call("moysklad", "POST", { action: "products-sync" }, cookie))
+        .status,
+      200,
+    );
+    assert.equal((await call("products")).data.products[0].in_stock, false);
+    stockAmount = 5;
+    sourceProduct.salePrices = [];
+    assert.equal(
+      (await call("moysklad", "POST", { action: "products-sync" }, cookie))
+        .status,
+      200,
+    );
+    assert.ok(
+      (
+        await query("SELECT moysklad_issue FROM products WHERE id=$1", [
+          first.id,
+        ])
+      ).rows[0].moysklad_issue,
+    );
+    sourceProduct.archived = true;
+    assert.equal(
+      (await call("moysklad", "POST", { action: "products-sync" }, cookie))
+        .status,
+      200,
+    );
+    assert.equal((await call("products")).data.products.length, 0);
+    productRows = [];
+    assert.equal(
+      (await call("moysklad", "POST", { action: "products-sync" }, cookie))
+        .status,
+      200,
+    );
+    assert.equal(
+      (await query("SELECT COUNT(*)::int AS n FROM products")).rows[0].n,
+      1,
+    );
+    assert.equal(
+      (await call("moysklad", "PUT", { action: "products-pause" }, cookie)).data
+        .productsEnabled,
+      false,
+    );
+    const { syncMoyskladProducts } = await import("../api/_moysklad-products");
+    assert.deepEqual(await syncMoyskladProducts(true), { skipped: true });
     failFolders = true;
     assert.equal(
       (await call("moysklad", "POST", { action: "categories-sync" }, cookie))
@@ -411,7 +576,7 @@ test("MoySklad settings require owner and CSRF, encrypt secrets, preserve workin
     );
     assert.equal(
       (await query("SELECT COUNT(*)::int AS n FROM products")).rows[0].n,
-      0,
+      1,
     );
   } finally {
     globalThis.fetch = originalFetch;

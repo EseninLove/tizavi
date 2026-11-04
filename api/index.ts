@@ -1,6 +1,7 @@
 import { authenticateAdmin } from "./_helpers.js";
 import { clientAddress, limitRequest, writeAdminAudit } from "./_security.js";
 import { ShopError } from "./_commerce.js";
+import productImage from "./_routes/product-image.js";
 import moysklad from "./_routes/moysklad.js";
 import privacy from "./_routes/privacy.js";
 import customerAuth from "./_routes/customer-auth.js";
@@ -30,6 +31,7 @@ const routes: Record<
   (req: VercelRequest, res: VercelResponse) => unknown
 > = {
   "customer-auth": customerAuth,
+  "product-image": productImage,
   moysklad,
   privacy,
   "email-settings": emailSettings,

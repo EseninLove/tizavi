@@ -6,6 +6,16 @@ import type {
   MoyskladReferences,
 } from "../../api/_moysklad-client";
 interface Connection {
+  productsEnabled: boolean;
+  productsSyncedAt: string | null;
+  productsError: string | null;
+  productsSummary: {
+    total?: number;
+    created?: number;
+    unavailable?: number;
+    imageErrors?: number;
+    issues?: { name: string; error: string }[];
+  };
   categoriesEnabled: boolean;
   categoriesSyncedAt: string | null;
   categoriesError: string | null;
@@ -85,7 +95,9 @@ export function MoyskladAdmin() {
           method,
           ...(body ? { body: JSON.stringify(body) } : {}),
         },
-        action.startsWith("categories-") ? 120000 : 35000,
+        action.startsWith("categories-") || action.startsWith("products-")
+          ? 120000
+          : 35000,
       );
       if (!d.ok) throw new Error(d.error);
       apply(d);
@@ -93,6 +105,12 @@ export function MoyskladAdmin() {
         setNotice(
           `Категории обновлены. Групп в МоёмСкладе: ${d.categoryResult.groups}. Создано на сайте: ${d.categoryResult.created}. Перенесено в МойСклад: ${d.categoryResult.exported}.`,
         );
+      if (action === "products-sync")
+        setNotice(
+          `Товары обновлены: ${d.productResult.total}. Новых: ${d.productResult.created}. Нет в наличии: ${d.productResult.unavailable}.`,
+        );
+      if (action === "products-pause")
+        setNotice("Автообновление товаров приостановлено.");
       if (action === "categories-pause")
         setNotice("Автообновление категорий приостановлено.");
       if (action === "token") {
@@ -121,7 +139,7 @@ export function MoyskladAdmin() {
       setBusy("");
     }
     // Refresh separately: a stalled refresh must never keep the buttons locked.
-    if (action === "check") {
+    if (action === "check" || action === "products-sync") {
       void connectionRequest()
         .then((d) => {
           if (d.ok) apply(d);
@@ -321,6 +339,93 @@ export function MoyskladAdmin() {
               )}
             </div>
           </section>
+          <section className="admin-card space-y-4">
+            <h2>Синхронизация товаров</h2>
+            <p className="admin-hint">
+              Из МоегоСклада загружаются название, описание, группа, фотография,
+              единица продажи, выбранная цена в рублях и свободный остаток
+              выбранного склада. Обновление — каждые 5 минут. Уже созданные
+              вручную товары сайта сохраняются отдельно.
+            </p>
+            <p className="admin-hint">
+              Поддерживаются обычные товары без модификаций в штуках,
+              килограммах и литрах; граммы и миллилитры пересчитываются. Услуги,
+              комплекты и модификации пока не импортируются. Отзывы, акции,
+              поиск по синонимам и оформление карточки остаются в админке сайта.
+            </p>
+            <AdminBadge
+              tone={connection.productsEnabled ? "success" : "neutral"}
+            >
+              {connection.productsEnabled
+                ? "Автообновление товаров включено"
+                : "Автообновление товаров выключено"}
+            </AdminBadge>
+            {connection.productsSyncedAt && (
+              <p className="admin-hint">
+                Последнее обновление товаров:{" "}
+                {new Date(connection.productsSyncedAt).toLocaleString("ru-RU")}
+              </p>
+            )}
+            {connection.productsError && (
+              <AdminNotice>{connection.productsError}</AdminNotice>
+            )}
+            {connection.productsSummary.total !== undefined && (
+              <p className="admin-hint">
+                Загружено: {connection.productsSummary.total}. Недоступно для
+                заказа: {connection.productsSummary.unavailable}. Не удалось
+                обновить фото: {connection.productsSummary.imageErrors || 0}.
+              </p>
+            )}
+            {!!connection.productsSummary.issues?.length && (
+              <ul className="text-sm text-amber-800 space-y-1">
+                {connection.productsSummary.issues.map((p, i) => (
+                  <li key={i}>
+                    {p.name}: {p.error}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="admin-hint">
+              Без цены, группы или остатка товар нельзя заказать. Если данные не
+              обновлялись больше 15 минут, покупка импортированных товаров
+              приостанавливается до успешного обновления. Передача заказов и
+              резервирование в МоёмСкладе ещё не подключены.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                className="admin-primary"
+                disabled={
+                  !!busy ||
+                  !connection.configured ||
+                  !connection.categoriesEnabled
+                }
+                onClick={() =>
+                  void change("products-sync", "POST", {
+                    action: "products-sync",
+                  })
+                }
+              >
+                {busy === "products-sync"
+                  ? "Загружаем товары…"
+                  : "Загрузить товары из МоегоСклада"}
+              </button>
+              {connection.productsEnabled && (
+                <button
+                  type="button"
+                  className="admin-secondary"
+                  disabled={!!busy}
+                  onClick={() =>
+                    void change("products-pause", "PUT", {
+                      action: "products-pause",
+                    })
+                  }
+                >
+                  Приостановить обмен товарами
+                </button>
+              )}
+            </div>
+          </section>
           <form className="admin-card space-y-4" onSubmit={saveToken}>
             <h2>API-токен</h2>
             <p className="admin-hint">
@@ -456,9 +561,8 @@ export function MoyskladAdmin() {
               </p>
             )}
             <AdminNotice tone="info">
-              Обмен категориями настраивается отдельно. Автоматический обмен
-              товарами, остатками и заказами ещё не включён. Каталог сайта
-              остаётся доступным.
+              Обмен товарами и категориями настраивается выше. Передача заказов
+              и резервирование в МоёмСкладе пока не подключены.
             </AdminNotice>
           </section>
           {connection.tokenSaved && (

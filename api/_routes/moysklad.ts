@@ -15,6 +15,7 @@ import {
   validMoyskladSelection,
 } from "../_moysklad-client.js";
 
+import { syncMoyskladProducts } from "../_moysklad-products.js";
 import { syncMoyskladCategories } from "../_moysklad-categories.js";
 
 async function settings() {
@@ -41,7 +42,11 @@ function view(row: any) {
       !!row.checked_at &&
       !row.last_error &&
       validMoyskladSelection(row.reference_data, selection),
-    synchronizationEnabled: false,
+    synchronizationEnabled: row.products_enabled === true,
+    productsEnabled: row.products_enabled,
+    productsSyncedAt: row.products_synced_at,
+    productsError: row.products_error,
+    productsSummary: row.products_summary,
     categoriesEnabled: row.categories_enabled,
     categoriesSyncedAt: row.categories_synced_at,
     categoriesError: row.categories_error,
@@ -62,7 +67,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(405).json({ ok: false });
     sameOrigin(req);
     const b = req.body || {};
-    if (
+    if (req.method === "POST" && b.action === "products-sync") {
+      await limitRequest("moysklad-products", clientAddress(req), 10, 900);
+      const result = await syncMoyskladProducts();
+      return res.json({ ...view(await settings()), productResult: result });
+    } else if (req.method === "PUT" && b.action === "products-pause") {
+      await sql`UPDATE moysklad_settings SET products_enabled=FALSE WHERE id=1`;
+    } else if (
       req.method === "POST" &&
       ["categories-export", "categories-sync"].includes(b.action)
     ) {
@@ -72,16 +83,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
       return res.json({ ...view(await settings()), categoryResult: result });
     } else if (req.method === "PUT" && b.action === "categories-pause") {
-      await sql`UPDATE moysklad_settings SET categories_enabled=FALSE WHERE id=1`;
+      await sql`UPDATE moysklad_settings SET products_enabled=FALSE,categories_enabled=FALSE WHERE id=1`;
     } else if (req.method === "DELETE") {
-      await sql`UPDATE moysklad_settings SET categories_enabled=FALSE,token_encrypted=NULL,organization_id=NULL,store_id=NULL,price_type_id=NULL,reference_data='{"organizations":[],"stores":[],"priceTypes":[]}'::jsonb,catalog_count=0,catalog_preview='[]'::jsonb,checked_at=NULL,last_error=NULL,updated_at=NOW() WHERE id=1`;
+      await sql`UPDATE products SET in_stock=FALSE,stock_synced_at=NULL WHERE moysklad_id IS NOT NULL`;
+      await sql`UPDATE moysklad_settings SET products_enabled=FALSE,categories_enabled=FALSE,token_encrypted=NULL,organization_id=NULL,store_id=NULL,price_type_id=NULL,reference_data='{"organizations":[],"stores":[],"priceTypes":[]}'::jsonb,catalog_count=0,catalog_preview='[]'::jsonb,checked_at=NULL,last_error=NULL,updated_at=NOW() WHERE id=1`;
     } else if (req.method === "PUT" && b.action === "token") {
       await limitRequest("moysklad-check", clientAddress(req), 10, 900);
       if (!canStoreCredentials())
         throw new ShopError("На сервере не настроена защита ключей", 503);
       const token = validateMoyskladToken(b.token);
       const data = await probeMoysklad(token);
-      await sql`UPDATE moysklad_settings SET categories_enabled=FALSE,token_encrypted=${encryptCredentials({ accessToken: token })},organization_id=NULL,store_id=NULL,price_type_id=NULL,reference_data=${JSON.stringify(data.references)}::jsonb,catalog_count=${data.catalogCount},catalog_preview=${JSON.stringify(data.preview)}::jsonb,checked_at=NOW(),last_error=NULL,updated_at=NOW() WHERE id=1`;
+      await sql`UPDATE products SET in_stock=FALSE,stock_synced_at=NULL WHERE moysklad_id IS NOT NULL`;
+      await sql`UPDATE moysklad_settings SET products_enabled=FALSE,categories_enabled=FALSE,token_encrypted=${encryptCredentials({ accessToken: token })},organization_id=NULL,store_id=NULL,price_type_id=NULL,reference_data=${JSON.stringify(data.references)}::jsonb,catalog_count=${data.catalogCount},catalog_preview=${JSON.stringify(data.preview)}::jsonb,checked_at=NOW(),last_error=NULL,updated_at=NOW() WHERE id=1`;
     } else if (req.method === "POST" && b.action === "check") {
       await limitRequest("moysklad-check", clientAddress(req), 10, 900);
       const row = await settings();
@@ -122,12 +135,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           "Выберите организацию, склад и тип цен из МоегоСклада",
         );
       const updated =
-        await sql`UPDATE moysklad_settings SET organization_id=${String(b.organizationId).toLowerCase()}::uuid,store_id=${String(b.storeId).toLowerCase()}::uuid,price_type_id=${String(b.priceTypeId).toLowerCase()}::uuid,updated_at=NOW() WHERE id=1 AND token_encrypted=${row.token_encrypted} AND last_error IS NULL RETURNING id`;
+        await sql`UPDATE moysklad_settings SET products_enabled=CASE WHEN store_id IS DISTINCT FROM ${b.storeId}::uuid OR price_type_id IS DISTINCT FROM ${b.priceTypeId}::uuid THEN FALSE ELSE products_enabled END,organization_id=${String(b.organizationId).toLowerCase()}::uuid,store_id=${String(b.storeId).toLowerCase()}::uuid,price_type_id=${String(b.priceTypeId).toLowerCase()}::uuid,updated_at=NOW() WHERE id=1 AND token_encrypted=${row.token_encrypted} AND last_error IS NULL RETURNING id`;
       if (!updated.rowCount)
         throw new ShopError(
           "Подключение уже изменилось. Обновите страницу.",
           409,
         );
+      if (row.store_id !== b.storeId || row.price_type_id !== b.priceTypeId)
+        await sql`UPDATE products SET in_stock=FALSE,stock_synced_at=NULL WHERE moysklad_id IS NOT NULL`;
     } else throw new ShopError("Неизвестное действие");
     return res.json(view(await settings()));
   } catch (error) {

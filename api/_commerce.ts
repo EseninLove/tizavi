@@ -35,6 +35,26 @@ export function calculateItems(
       Math.abs(quantity / step - Math.round(quantity / step)) > 1e-8
     )
       throw new ShopError(`Проверьте количество: ${p.name}`);
+    if (p.moysklad_id) {
+      const age = Date.now() - new Date(p.stock_synced_at).getTime();
+      if (
+        p.moysklad_hidden ||
+        p.moysklad_issue ||
+        !p.stock_synced_at ||
+        !Number.isFinite(age) ||
+        age > 15 * 60 * 1000
+      )
+        throw new ShopError(
+          `Наличие товара «${p.name}» требует обновления. Попробуйте позже.`,
+        );
+      if (
+        !Number.isFinite(Number(p.stock_available)) ||
+        quantity > Number(p.stock_available)
+      )
+        throw new ShopError(
+          `Недостаточно товара «${p.name}»: доступно ${p.stock_available} ${p.unit}`,
+        );
+    }
     const priceMinor = Math.round(Number(p.price) * 100);
     if (!Number.isSafeInteger(priceMinor) || priceMinor <= 0)
       throw new ShopError(`Цена товара ${p.name} недоступна`);

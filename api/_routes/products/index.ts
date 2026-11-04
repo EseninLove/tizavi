@@ -7,24 +7,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     await ensureCommerceSchema();
     if (req.method === "GET") {
-      const products =
-        await sql`SELECT p.*,COALESCE(r.actual_count,0) AS actual_reviews_count,
+      const admin = req.query.admin === "1";
+      if (admin && !(await authorizeStaff(req, res, "catalog"))) return;
+      const products = await sql`SELECT p.*,
+        (p.in_stock AND (p.moysklad_id IS NULL OR p.stock_synced_at > NOW()-INTERVAL '15 minutes')) AS in_stock,
+        COALESCE(r.actual_count,0) AS actual_reviews_count,
         CASE WHEN p.reviews_count+COALESCE(r.actual_count,0)>0 THEN ROUND(((p.rating*p.reviews_count+COALESCE(r.rating_sum,0))/(p.reviews_count+COALESCE(r.actual_count,0)))::numeric,1) ELSE 0 END AS effective_rating,
         COALESCE(s.purchase_count,0) AS purchase_count
         FROM products p
         LEFT JOIN LATERAL(SELECT COUNT(*)::int AS actual_count,SUM(rating) AS rating_sum FROM product_reviews WHERE product_id=p.id AND visible) r ON TRUE
         LEFT JOIN LATERAL(SELECT COUNT(*)::int AS purchase_count FROM orders o,jsonb_array_elements(o.items) item WHERE o.payment_status='succeeded' AND o.status!='cancelled' AND item->'product'->>'id'=p.id::text) s ON TRUE
+        WHERE (${admin} OR NOT p.moysklad_hidden)
         ORDER BY p.sort_order ASC,p.created_at DESC`;
       return res.json({ ok: true, products: products.rows });
     }
     if (!(await authorizeStaff(req, res, "catalog"))) return;
     if (req.method === "DELETE") {
+      const linked = (
+        await sql`SELECT moysklad_id FROM products WHERE id=${positiveInteger(req.query.id)}`
+      ).rows[0];
+      if (linked?.moysklad_id)
+        throw new ShopError(
+          "Архивируйте связанный товар в МоёмСкладе — он скроется с витрины",
+          409,
+        );
       await sql`DELETE FROM products WHERE id=${positiveInteger(req.query.id)}`;
       return res.json({ ok: true });
     }
     if (!["POST", "PUT"].includes(req.method || ""))
       return res.status(405).json({ ok: false });
     const b = req.body || {};
+    const linked =
+      req.method === "PUT"
+        ? (
+            await sql`SELECT * FROM products WHERE id=${positiveInteger(req.query.id)}`
+          ).rows[0]
+        : null;
+    if (linked?.moysklad_id) {
+      const rating = Number(b.rating || 0),
+        reviews = Number(b.reviews_count || 0),
+        old = b.old_price ? Number(b.old_price) : null;
+      if (
+        !Number.isFinite(rating) ||
+        rating < 0 ||
+        rating > 5 ||
+        !Number.isSafeInteger(reviews) ||
+        reviews < 0 ||
+        reviews > 1000000 ||
+        (reviews > 0 && rating < 1) ||
+        (old !== null && (!Number.isFinite(old) || old <= Number(linked.price)))
+      )
+        throw new ShopError("Проверьте старую цену и оценки");
+      await sql`UPDATE products SET old_price=${old},rating=${rating},reviews_count=${reviews},badge=${String(b.badge || "").slice(0, 100) || null},brand=${String(b.brand || "").slice(0, 250)},synonyms=${String(b.synonyms || "").slice(0, 2000)},seasonal=${b.seasonal === true},popular=${b.popular === true},package_label=${String(b.package_label || "").slice(0, 250)},updated_at=NOW() WHERE id=${linked.id}`;
+      return res.json({ ok: true });
+    }
     const price = Number(b.price),
       rating = Number(b.rating || 0),
       reviews = Number(b.reviews_count || 0);

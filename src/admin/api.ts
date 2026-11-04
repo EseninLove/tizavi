@@ -87,7 +87,7 @@ export const dashboardApi = {
 
 // Товары
 export const productsApi = {
-  list: () => apiFetch<any>("/api/products"),
+  list: () => apiFetch<any>("/api/products?admin=1"),
   create: (data: Record<string, unknown>) =>
     apiFetch<any>("/api/products", {
       method: "POST",
