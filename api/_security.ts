@@ -8,9 +8,13 @@ export const fingerprint = (value: string) =>
   crypto.createHash("sha256").update(value).digest("hex");
 export function clientAddress(req: VercelRequest) {
   // Forwarded addresses are trusted only behind our deployment proxy.
-  const forwarded = process.env.VERCEL
-    ? req.headers["x-vercel-forwarded-for"] || req.headers["x-forwarded-for"]
-    : undefined;
+  const forwarded =
+    process.env.TIZAVI_PASSENGER === "1"
+      ? req.headers["!~passenger-client-address"]
+      : process.env.VERCEL
+        ? req.headers["x-vercel-forwarded-for"] ||
+          req.headers["x-forwarded-for"]
+        : undefined;
   return String(forwarded || req.socket?.remoteAddress || "unknown")
     .split(",")[0]
     .trim()

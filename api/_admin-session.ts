@@ -15,7 +15,7 @@ function token(req: VercelRequest) {
   return value && /^[a-f0-9]{64}$/.test(value) ? value : null;
 }
 function flags(req: VercelRequest) {
-  return `Path=/api; HttpOnly; SameSite=Strict${process.env.VERCEL || req.headers["x-forwarded-proto"] === "https" ? "; Secure" : ""}`;
+  return `Path=/api; HttpOnly; SameSite=Strict${process.env.VERCEL || process.env.PUBLIC_APP_URL?.startsWith("https://") || req.headers["x-forwarded-proto"] === "https" ? "; Secure" : ""}`;
 }
 export async function createAdminSession(
   req: VercelRequest,

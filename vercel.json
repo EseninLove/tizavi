@@ -40,5 +40,12 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "destination": "https://xn--80aendd9c.xn--p1ai/:path*",
+      "permanent": false
+    }
   ]
 }

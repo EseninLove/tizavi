@@ -147,7 +147,9 @@ export async function requireCustomer(req: VercelRequest) {
 }
 function cookieFlags(req: VercelRequest) {
   const secure =
-    process.env.VERCEL || req.headers["x-forwarded-proto"] === "https";
+    process.env.VERCEL ||
+    process.env.PUBLIC_APP_URL?.startsWith("https://") ||
+    req.headers["x-forwarded-proto"] === "https";
   return `Path=/; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`;
 }
 export async function createSession(

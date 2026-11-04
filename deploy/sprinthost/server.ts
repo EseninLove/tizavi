@@ -20,6 +20,8 @@ const mime: Record<string, string> = {
 export const server = http.createServer(async (req, res) => {
   for (const { key, value } of headers) res.setHeader(key, value);
   try {
+    // The public Host arrives through Apache; do not trust client-supplied X-Forwarded-Host.
+    req.headers["x-forwarded-host"] = req.headers.host;
     const url = new URL(req.url || "/", "http://localhost");
     if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
       const request = req as any;
