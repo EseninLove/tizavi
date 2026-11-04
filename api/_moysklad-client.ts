@@ -58,7 +58,7 @@ export async function probeMoysklad(
       const r = await transport(MOYSKLAD_API + path, {
         headers: {
           Authorization: `Bearer ${token}`,
-          Accept: "application/json",
+          Accept: "application/json;charset=utf-8",
           "Accept-Encoding": "gzip",
         },
         redirect: "error",
@@ -136,16 +136,12 @@ export async function probeMoysklad(
       Number.isSafeInteger(assortment.meta?.size) && assortment.meta.size >= 0
         ? Math.min(assortment.meta.size, 2147483647)
         : assortment.rows.length,
-    preview: assortment.rows
-      .slice(0, 5)
-      .map((row: any) => ({
-        ...reference(row),
-        type: ["product", "variant", "service", "bundle"].includes(
-          row.meta?.type,
-        )
-          ? row.meta.type
-          : "other",
-      })),
+    preview: assortment.rows.slice(0, 5).map((row: any) => ({
+      ...reference(row),
+      type: ["product", "variant", "service", "bundle"].includes(row.meta?.type)
+        ? row.meta.type
+        : "other",
+    })),
   };
 }
 export function validMoyskladSelection(

@@ -16,6 +16,24 @@ interface Connection {
   preview: { id: string; name: string; type: string }[];
   selection: { organizationId: string; storeId: string; priceTypeId: string };
 }
+async function connectionRequest(options: RequestInit = {}) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 35000);
+  try {
+    return await apiFetch("/api/moysklad", {
+      ...options,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted)
+      throw new Error(
+        "Проверка не завершилась за 35 секунд. Обновите страницу, чтобы узнать, сохранился ли токен, и повторите проверку при необходимости.",
+      );
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
 export function MoyskladAdmin() {
   const [connection, setConnection] = useState<Connection | null>(null);
   const [selection, setSelection] = useState({
@@ -33,7 +51,7 @@ export function MoyskladAdmin() {
   };
   useEffect(() => {
     let live = true;
-    apiFetch("/api/moysklad")
+    connectionRequest()
       .then((d) => {
         if (!live) return;
         if (!d.ok) throw new Error(d.error);
@@ -59,7 +77,7 @@ export function MoyskladAdmin() {
     setError("");
     setNotice("");
     try {
-      const d = await apiFetch("/api/moysklad", {
+      const d = await connectionRequest({
         method,
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
@@ -87,15 +105,16 @@ export function MoyskladAdmin() {
       setError(
         e instanceof Error ? e.message : "Не удалось обновить подключение",
       );
-      // A failed recheck invalidates readiness on the server; refresh the status too.
-      if (action === "check") {
-        try {
-          const d = await apiFetch("/api/moysklad");
-          if (d.ok) apply(d);
-        } catch {}
-      }
     } finally {
       setBusy("");
+    }
+    // Refresh separately: a stalled refresh must never keep the buttons locked.
+    if (action === "check") {
+      void connectionRequest()
+        .then((d) => {
+          if (d.ok) apply(d);
+        })
+        .catch(() => {});
     }
   };
   const saveToken = (e: FormEvent) => {

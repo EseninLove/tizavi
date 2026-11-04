@@ -21,6 +21,8 @@ function transport(calls: string[], fail = false): typeof fetch {
     assert.ok(url.startsWith(MOYSKLAD_API + "/"));
     assert.equal(options.method, undefined); // setup never writes to MoySklad
     assert.equal(options.redirect, "error");
+    assert.equal(options.headers.Accept, "application/json;charset=utf-8");
+    assert.equal(options.headers["Accept-Encoding"], "gzip");
     assert.equal(options.headers.Authorization, `Bearer ${token}`);
     if (fail) return new Response(`private ${token}`, { status: 401 });
     if (url.includes("/entity/organization"))
