@@ -8,8 +8,9 @@ const config =
 if (!fs.existsSync(config)) throw new Error("Tizavi configuration is missing");
 Object.assign(process.env, JSON.parse(fs.readFileSync(config, "utf8")));
 process.env.NODE_ENV = "production";
-// Passenger rejects client-supplied secure headers; direct CLI servers do not.
-process.env.TIZAVI_PASSENGER = global.PhusionPassenger ? "1" : "";
+// This entry point runs behind Apache, which overwrites the trusted address header.
+// For local checks, start server.ts directly instead.
+process.env.TIZAVI_PASSENGER = "1";
 import("tsx/esm/api")
   .then(({ tsImport }) =>
     tsImport("./deploy/sprinthost/server.ts", pathToFileURL(__filename).href),

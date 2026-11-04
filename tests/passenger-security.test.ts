@@ -22,6 +22,10 @@ test("Passenger client addresses use protected headers only in Passenger runtime
     assert.equal(clientAddress(req), "203.0.113.5");
     delete req.headers["!~passenger-client-address"];
     assert.equal(clientAddress(req), "127.0.0.1");
+    req.headers["x-tizavi-client-address"] = "203.0.113.6";
+    assert.equal(clientAddress(req), "203.0.113.6");
+    delete process.env.TIZAVI_PASSENGER;
+    assert.equal(clientAddress(req), "127.0.0.1");
   } finally {
     for (const [key, value] of [
       ["TIZAVI_PASSENGER", previous.passenger],

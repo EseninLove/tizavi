@@ -10,7 +10,8 @@ export function clientAddress(req: VercelRequest) {
   // Forwarded addresses are trusted only behind our deployment proxy.
   const forwarded =
     process.env.TIZAVI_PASSENGER === "1"
-      ? req.headers["!~passenger-client-address"]
+      ? req.headers["!~passenger-client-address"] ||
+        req.headers["x-tizavi-client-address"]
       : process.env.VERCEL
         ? req.headers["x-vercel-forwarded-for"] ||
           req.headers["x-forwarded-for"]
