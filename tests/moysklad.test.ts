@@ -107,6 +107,9 @@ test("MoySklad settings require owner and CSRF, encrypt secrets, preserve workin
   await db.exec(
     "CREATE FUNCTION pg_advisory_xact_lock(bigint) RETURNS void LANGUAGE SQL AS $$ SELECT $$;",
   );
+  await db.exec(
+    "CREATE FUNCTION pg_try_advisory_lock(bigint) RETURNS boolean LANGUAGE SQL AS $$ SELECT TRUE $$; CREATE FUNCTION pg_advisory_unlock(bigint) RETURNS boolean LANGUAGE SQL AS $$ SELECT TRUE $$;",
+  );
   const { pool } = await import("../api/_db");
   const originalConnect = pool.connect.bind(pool);
   const query = async (text: string, values: any[] = []) => {
@@ -270,6 +273,134 @@ test("MoySklad settings require owner and CSRF, encrypt secrets, preserve workin
         .configured,
       true,
     );
+    const category = (
+      await query(
+        "INSERT INTO categories(slug,name,image,sort_order) VALUES('stable-category','Овощи','saved-photo',7) RETURNING id",
+      )
+    ).rows[0] as any;
+    let folders: any[] = [];
+    let writes = 0;
+    let failFolders = false;
+    let loseResponse = true;
+    const baseTransport = transport([]);
+    globalThis.fetch = (async (input: any, opts: any) => {
+      const url = String(input);
+      if (!url.includes("/productfolder")) return baseTransport(input, opts);
+      assert.equal(opts.headers.Accept, "application/json;charset=utf-8");
+      if (failFolders) return new Response("private " + token, { status: 503 });
+      if (opts.method === "POST") {
+        const body = JSON.parse(opts.body);
+        writes++;
+        assert.ok(!folders.some((f) => f.externalCode === body.externalCode));
+        assert.equal(body.id, undefined);
+        body.id = crypto.randomUUID();
+        folders.push(body);
+        if (loseResponse) {
+          loseResponse = false;
+          throw new Error("Lost response " + token);
+        }
+        return Response.json(body);
+      }
+      const id = url.split("/productfolder/")[1];
+      if (id) {
+        const found = folders.find((f) => f.id === id);
+        return found ? Response.json(found) : new Response("", { status: 404 });
+      }
+      return Response.json({ rows: folders, meta: { size: folders.length } });
+    }) as typeof fetch;
+    // A remote write succeeded but its reply was lost; the retry must recover the same external code.
+    const lost = await call(
+      "moysklad",
+      "POST",
+      { action: "categories-export" },
+      cookie,
+    );
+    assert.equal(lost.status, 503);
+    assert.ok(!JSON.stringify(lost.data).includes(token));
+    const recovered = await call(
+      "moysklad",
+      "POST",
+      { action: "categories-export" },
+      cookie,
+    );
+    assert.equal(recovered.status, 200, JSON.stringify(recovered.data));
+    assert.equal(writes, 1);
+    assert.equal(recovered.data.categoriesEnabled, true);
+    const mapped = (
+      await query("SELECT * FROM categories WHERE id=$1", [category.id])
+    ).rows[0] as any;
+    assert.equal(mapped.moysklad_id, folders[0].id);
+    folders[0].name = "Свежие овощи";
+    folders.push({
+      id: "44444444-4444-4444-4444-444444444444",
+      name: "Новая группа",
+    });
+    assert.equal(
+      (await call("moysklad", "POST", { action: "categories-sync" }, cookie))
+        .status,
+      200,
+    );
+    const renamed = (
+      await query("SELECT * FROM categories WHERE id=$1", [category.id])
+    ).rows[0] as any;
+    assert.equal(renamed.slug, "stable-category");
+    assert.equal(renamed.name, "Свежие овощи");
+    assert.equal(renamed.image, "saved-photo");
+    assert.equal(renamed.sort_order, 7);
+    assert.equal(
+      (await query("SELECT COUNT(*)::int AS n FROM categories")).rows[0].n,
+      2,
+    );
+    folders[0].archived = true;
+    assert.equal(
+      (await call("moysklad", "POST", { action: "categories-sync" }, cookie))
+        .status,
+      200,
+    );
+    assert.equal(
+      (
+        await query("SELECT moysklad_hidden FROM categories WHERE id=$1", [
+          category.id,
+        ])
+      ).rows[0].moysklad_hidden,
+      true,
+    );
+    assert.equal((await call("categories")).data.categories.length, 1);
+    folders[0].archived = false;
+    assert.equal(
+      (await call("moysklad", "POST", { action: "categories-sync" }, cookie))
+        .status,
+      200,
+    );
+    failFolders = true;
+    assert.equal(
+      (await call("moysklad", "POST", { action: "categories-sync" }, cookie))
+        .status,
+      503,
+    );
+    assert.equal((await call("categories")).data.categories.length, 2); // failed reads never hide categories
+    failFolders = false;
+    folders = [];
+    assert.equal(
+      (await call("moysklad", "POST", { action: "categories-sync" }, cookie))
+        .status,
+      200,
+    );
+    assert.equal((await call("categories")).data.categories.length, 0);
+    assert.equal(
+      (await query("SELECT COUNT(*)::int AS n FROM categories")).rows[0].n,
+      2,
+    ); // never physically delete
+    assert.equal(
+      (await call("moysklad", "PUT", { action: "categories-pause" }, cookie))
+        .data.categoriesEnabled,
+      false,
+    );
+    const { syncMoyskladCategories } =
+      await import("../api/_moysklad-categories");
+    assert.deepEqual(await syncMoyskladCategories(false, true), {
+      skipped: true,
+    });
     assert.equal(
       (await call("moysklad", "DELETE", {}, cookie)).data.tokenSaved,
       false,

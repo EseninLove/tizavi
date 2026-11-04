@@ -7,6 +7,8 @@ interface CategoryRow {
   slug: string;
   name: string;
   sort_order: number;
+  moysklad_id?: string;
+  moysklad_hidden?: boolean;
   image?: string;
   icon?: string;
 }
@@ -130,6 +132,11 @@ export function CategoriesAdmin() {
         </button>
       </div>
 
+      <p className="admin-hint">
+        У связанных категорий название меняется в МоёмСкладе. Фото, значок и
+        порядок показа настраиваются здесь. Архивные и удалённые группы
+        скрываются с витрины без удаления товаров.
+      </p>
       {error && !showForm && <p className="text-sm text-red-600">{error}</p>}
       {loading ? (
         <div className="text-center py-20 text-gray-400 animate-pulse">
@@ -164,6 +171,8 @@ export function CategoriesAdmin() {
                   </div>
                   <div className="text-xs text-gray-400">
                     {countProducts(c.slug)} товаров · Порядок: {c.sort_order}
+                    {c.moysklad_id ? " · МойСклад" : ""}
+                    {c.moysklad_hidden ? " · Скрыта с витрины" : ""}
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
@@ -174,7 +183,7 @@ export function CategoriesAdmin() {
                     Изменить
                   </button>
                   <button
-                    disabled={countProducts(c.slug) > 0}
+                    disabled={!!c.moysklad_id || countProducts(c.slug) > 0}
                     title={
                       countProducts(c.slug) > 0
                         ? "Перенесите товары в другую категорию перед удалением"
@@ -226,6 +235,7 @@ export function CategoriesAdmin() {
                   className="admin-input"
                   placeholder="Например: Овощи и фрукты"
                   value={name}
+                  disabled={!!editing?.moysklad_id}
                   onChange={(e) => setName(e.target.value)}
                   autoFocus
                 />

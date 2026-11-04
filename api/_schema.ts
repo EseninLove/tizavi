@@ -29,6 +29,7 @@ async function migrate() {
       "007-staff",
       "008-staff-accounts",
       "009-moysklad",
+      "010-moysklad-categories",
     ]) {
       const found = await client.query(
         "SELECT 1 FROM shop_migrations WHERE version=$1",

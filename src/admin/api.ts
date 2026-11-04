@@ -104,7 +104,7 @@ export const productsApi = {
 
 // Категории
 export const categoriesApi = {
-  list: () => apiFetch<any>("/api/categories"),
+  list: () => apiFetch<any>("/api/categories?admin=1"),
   create: (data: Record<string, unknown>) =>
     apiFetch<any>("/api/categories", {
       method: "POST",

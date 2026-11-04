@@ -6,6 +6,9 @@ import type {
   MoyskladReferences,
 } from "../../api/_moysklad-client";
 interface Connection {
+  categoriesEnabled: boolean;
+  categoriesSyncedAt: string | null;
+  categoriesError: string | null;
   tokenSaved: boolean;
   canStoreCredentials: boolean;
   checkedAt: string | null;
@@ -16,9 +19,9 @@ interface Connection {
   preview: { id: string; name: string; type: string }[];
   selection: { organizationId: string; storeId: string; priceTypeId: string };
 }
-async function connectionRequest(options: RequestInit = {}) {
+async function connectionRequest(options: RequestInit = {}, timeoutMs = 35000) {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 35000);
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await apiFetch("/api/moysklad", {
       ...options,
@@ -27,7 +30,7 @@ async function connectionRequest(options: RequestInit = {}) {
   } catch (error) {
     if (controller.signal.aborted)
       throw new Error(
-        "Проверка не завершилась за 35 секунд. Обновите страницу, чтобы узнать, сохранился ли токен, и повторите проверку при необходимости.",
+        "Операция не завершилась вовремя. Обновите страницу, чтобы узнать, сохранился ли токен, и повторите проверку при необходимости.",
       );
     throw error;
   } finally {
@@ -77,12 +80,21 @@ export function MoyskladAdmin() {
     setError("");
     setNotice("");
     try {
-      const d = await connectionRequest({
-        method,
-        ...(body ? { body: JSON.stringify(body) } : {}),
-      });
+      const d = await connectionRequest(
+        {
+          method,
+          ...(body ? { body: JSON.stringify(body) } : {}),
+        },
+        action.startsWith("categories-") ? 120000 : 35000,
+      );
       if (!d.ok) throw new Error(d.error);
       apply(d);
+      if (action === "categories-export" || action === "categories-sync")
+        setNotice(
+          `Категории обновлены. Групп в МоёмСкладе: ${d.categoryResult.groups}. Создано на сайте: ${d.categoryResult.created}. Перенесено в МойСклад: ${d.categoryResult.exported}.`,
+        );
+      if (action === "categories-pause")
+        setNotice("Автообновление категорий приостановлено.");
       if (action === "token") {
         setToken("");
         setNotice(
@@ -229,6 +241,86 @@ export function MoyskladAdmin() {
               </li>
             </ol>
           </section>
+          <section className="admin-card space-y-4">
+            <h2>Синхронизация категорий</h2>
+            <p className="admin-hint">
+              Сначала перенесите категории сайта в МойСклад. Затем создавайте и
+              переименовывайте группы в МоёмСкладе — сайт получает изменения
+              каждые 5 минут. Вложенные группы отображаются на сайте общим
+              списком.
+            </p>
+            <p className="admin-hint">
+              Фото, значки и порядок показа сохраняются. Архивные и удалённые
+              группы скрываются с витрины; товары и история заказов остаются.
+            </p>
+            <AdminBadge
+              tone={connection.categoriesEnabled ? "success" : "neutral"}
+            >
+              {connection.categoriesEnabled
+                ? "Автообновление включено"
+                : "Автообновление выключено"}
+            </AdminBadge>
+            {connection.categoriesSyncedAt && (
+              <p className="admin-hint">
+                Последнее обновление:{" "}
+                {new Date(connection.categoriesSyncedAt).toLocaleString(
+                  "ru-RU",
+                )}
+              </p>
+            )}
+            {connection.categoriesError && (
+              <AdminNotice>{connection.categoriesError}</AdminNotice>
+            )}
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                className="admin-primary"
+                disabled={!!busy || !connection.tokenSaved}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Перенести категории сайта в группы МоегоСклада и включить автообновление? Совпадающие по названию группы верхнего уровня будут связаны; остальные созданы.",
+                    )
+                  )
+                    void change("categories-export", "POST", {
+                      action: "categories-export",
+                    });
+                }}
+              >
+                {busy === "categories-export"
+                  ? "Переносим категории…"
+                  : "Перенести категории сайта в МойСклад"}
+              </button>
+              <button
+                type="button"
+                className="admin-secondary"
+                disabled={!!busy || !connection.tokenSaved}
+                onClick={() =>
+                  void change("categories-sync", "POST", {
+                    action: "categories-sync",
+                  })
+                }
+              >
+                {busy === "categories-sync"
+                  ? "Обновляем…"
+                  : "Обновить из МоегоСклада"}
+              </button>
+              {connection.categoriesEnabled && (
+                <button
+                  type="button"
+                  className="admin-secondary"
+                  disabled={!!busy}
+                  onClick={() =>
+                    void change("categories-pause", "PUT", {
+                      action: "categories-pause",
+                    })
+                  }
+                >
+                  Приостановить автообновление
+                </button>
+              )}
+            </div>
+          </section>
           <form className="admin-card space-y-4" onSubmit={saveToken}>
             <h2>API-токен</h2>
             <p className="admin-hint">
@@ -364,9 +456,9 @@ export function MoyskladAdmin() {
               </p>
             )}
             <AdminNotice tone="info">
-              Это первый этап интеграции. Автоматический обмен товарами,
-              остатками и заказами ещё не включён. Каталог сайта остаётся
-              доступным.
+              Обмен категориями настраивается отдельно. Автоматический обмен
+              товарами, остатками и заказами ещё не включён. Каталог сайта
+              остаётся доступным.
             </AdminNotice>
           </section>
           {connection.tokenSaved && (

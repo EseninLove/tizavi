@@ -8,10 +8,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // GET /api/categories — список (публичный)
   if (req.method === "GET") {
     try {
-      const result = await sql`
+      const admin = req.query.admin === "1";
+      if (admin && !(await authorizeStaff(req, res, "catalog"))) return;
+      const result = admin
+        ? await sql`
+        SELECT id, slug, name, sort_order, image, icon, moysklad_id, moysklad_hidden
+        FROM categories ORDER BY sort_order ASC, id ASC
+      `
+        : await sql`
         SELECT id, slug, name, sort_order, image, icon
-        FROM categories
-        ORDER BY sort_order ASC, id ASC
+        FROM categories WHERE NOT moysklad_hidden ORDER BY sort_order ASC, id ASC
       `;
       return sendJSON(res, 200, { ok: true, categories: result.rows });
     } catch {
@@ -73,6 +79,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     try {
+      const linked =
+        await sql`SELECT name, moysklad_id FROM categories WHERE id=${catId}`;
+      if (
+        linked.rows[0]?.moysklad_id &&
+        name &&
+        name.trim() !== linked.rows[0].name
+      )
+        return sendJSON(res, 409, {
+          ok: false,
+          error: "Название связанной категории меняется в МоёмСкладе",
+        });
       if (name && name.trim()) {
         await sql`
           UPDATE categories SET name = ${name.trim()}
@@ -103,6 +120,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
+      const linked =
+        await sql`SELECT moysklad_id FROM categories WHERE id=${catId}`;
+      if (linked.rows[0]?.moysklad_id)
+        return sendJSON(res, 409, {
+          ok: false,
+          error:
+            "Архивируйте связанную группу в МоёмСкладе — категория скроется автоматически",
+        });
       const used =
         await sql`SELECT 1 FROM products WHERE category=(SELECT slug FROM categories WHERE id=${catId}) LIMIT 1`;
       if (used.rows.length)

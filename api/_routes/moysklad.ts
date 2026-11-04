@@ -15,6 +15,8 @@ import {
   validMoyskladSelection,
 } from "../_moysklad-client.js";
 
+import { syncMoyskladCategories } from "../_moysklad-categories.js";
+
 async function settings() {
   return (await sql`SELECT * FROM moysklad_settings WHERE id=1`).rows[0] as any;
 }
@@ -40,18 +42,19 @@ function view(row: any) {
       !row.last_error &&
       validMoyskladSelection(row.reference_data, selection),
     synchronizationEnabled: false,
+    categoriesEnabled: row.categories_enabled,
+    categoriesSyncedAt: row.categories_synced_at,
+    categoriesError: row.categories_error,
   };
 }
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Cache-Control", "no-store");
   const auth = await authenticateAdmin(req);
   if (!auth.authorized || auth.user?.role !== "super_admin")
-    return res
-      .status(403)
-      .json({
-        ok: false,
-        error: "Подключение МоегоСклада доступно только владельцу магазина",
-      });
+    return res.status(403).json({
+      ok: false,
+      error: "Подключение МоегоСклада доступно только владельцу магазина",
+    });
   try {
     await ensureCommerceSchema();
     if (req.method === "GET") return res.json(view(await settings()));
@@ -59,15 +62,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(405).json({ ok: false });
     sameOrigin(req);
     const b = req.body || {};
-    if (req.method === "DELETE") {
-      await sql`UPDATE moysklad_settings SET token_encrypted=NULL,organization_id=NULL,store_id=NULL,price_type_id=NULL,reference_data='{"organizations":[],"stores":[],"priceTypes":[]}'::jsonb,catalog_count=0,catalog_preview='[]'::jsonb,checked_at=NULL,last_error=NULL,updated_at=NOW() WHERE id=1`;
+    if (
+      req.method === "POST" &&
+      ["categories-export", "categories-sync"].includes(b.action)
+    ) {
+      await limitRequest("moysklad-categories", clientAddress(req), 10, 900);
+      const result = await syncMoyskladCategories(
+        b.action === "categories-export",
+      );
+      return res.json({ ...view(await settings()), categoryResult: result });
+    } else if (req.method === "PUT" && b.action === "categories-pause") {
+      await sql`UPDATE moysklad_settings SET categories_enabled=FALSE WHERE id=1`;
+    } else if (req.method === "DELETE") {
+      await sql`UPDATE moysklad_settings SET categories_enabled=FALSE,token_encrypted=NULL,organization_id=NULL,store_id=NULL,price_type_id=NULL,reference_data='{"organizations":[],"stores":[],"priceTypes":[]}'::jsonb,catalog_count=0,catalog_preview='[]'::jsonb,checked_at=NULL,last_error=NULL,updated_at=NOW() WHERE id=1`;
     } else if (req.method === "PUT" && b.action === "token") {
       await limitRequest("moysklad-check", clientAddress(req), 10, 900);
       if (!canStoreCredentials())
         throw new ShopError("На сервере не настроена защита ключей", 503);
       const token = validateMoyskladToken(b.token);
       const data = await probeMoysklad(token);
-      await sql`UPDATE moysklad_settings SET token_encrypted=${encryptCredentials({ accessToken: token })},organization_id=NULL,store_id=NULL,price_type_id=NULL,reference_data=${JSON.stringify(data.references)}::jsonb,catalog_count=${data.catalogCount},catalog_preview=${JSON.stringify(data.preview)}::jsonb,checked_at=NOW(),last_error=NULL,updated_at=NOW() WHERE id=1`;
+      await sql`UPDATE moysklad_settings SET categories_enabled=FALSE,token_encrypted=${encryptCredentials({ accessToken: token })},organization_id=NULL,store_id=NULL,price_type_id=NULL,reference_data=${JSON.stringify(data.references)}::jsonb,catalog_count=${data.catalogCount},catalog_preview=${JSON.stringify(data.preview)}::jsonb,checked_at=NOW(),last_error=NULL,updated_at=NOW() WHERE id=1`;
     } else if (req.method === "POST" && b.action === "check") {
       await limitRequest("moysklad-check", clientAddress(req), 10, 900);
       const row = await settings();
@@ -117,14 +131,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else throw new ShopError("Неизвестное действие");
     return res.json(view(await settings()));
   } catch (error) {
-    return res
-      .status(error instanceof ShopError ? error.status : 503)
-      .json({
-        ok: false,
-        error:
-          error instanceof ShopError
-            ? error.message
-            : "Не удалось обновить подключение МоегоСклада",
-      });
+    return res.status(error instanceof ShopError ? error.status : 503).json({
+      ok: false,
+      error:
+        error instanceof ShopError
+          ? error.message
+          : "Не удалось обновить подключение МоегоСклада",
+    });
   }
 }

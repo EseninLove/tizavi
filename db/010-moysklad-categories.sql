@@ -1,0 +1,6 @@
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS moysklad_id UUID UNIQUE;
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS moysklad_export_id UUID;
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS moysklad_hidden BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE moysklad_settings ADD COLUMN IF NOT EXISTS categories_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE moysklad_settings ADD COLUMN IF NOT EXISTS categories_synced_at TIMESTAMPTZ;
+ALTER TABLE moysklad_settings ADD COLUMN IF NOT EXISTS categories_error TEXT;
